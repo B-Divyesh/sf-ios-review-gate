@@ -63,6 +63,23 @@ test('dark mobile demo banner has readable controls and no serious axe findings'
   expect(results.violations.filter(v => ['serious', 'critical'].includes(v.impact))).toEqual([]);
 });
 
+test('warmed demo reloads offline with its cached app shell', async ({ page, context }) => {
+  await page.goto('/demo', { waitUntil: 'networkidle' });
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+  await expect.poll(() => page.evaluate(async () => {
+    const cache = await caches.open('ios-review-gate-v2');
+    const paths = (await cache.keys()).map(request => new URL(request.url).pathname);
+    return paths.some(path => /^\/assets\/index-.+\.js$/.test(path))
+      && paths.some(path => /^\/assets\/index-.+\.css$/.test(path));
+  })).toBe(true);
+  await page.waitForTimeout(250);
+  await context.setOffline(true);
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await expect(page.getByRole('heading', { level: 1, name: 'Inspect a complete sample release' })).toBeVisible();
+  await context.setOffline(false);
+});
+
 test('keyboard activation opens the sample and moves focus to its heading', async ({ page }) => {
   await page.goto('/');
   const action = page.getByRole('link', { name: 'Try it with sample data' });
