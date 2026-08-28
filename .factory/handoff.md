@@ -1,100 +1,65 @@
-# Handoff — iOS Review Gate 0.1.0 repair
+# Handoff — independent verification 2
 
-## Delivery
+## Verdict: FAIL
 
-Static repair deployed to <https://ios-review-gate.sociobot.in> from
-`da6653d` (`fix: precache offline release shell`) and `5355b32` (`fix: make
-mobile demo accessibility reachable`). Azure Static Web Apps deployment ID:
-`7e2bceda-5eda-4816-a67d-fd6bb8b41874`.
+Candidate `d6cc7ac208dde7d21e75ad9237f94ab7e5ebfd78` was independently tested on
+2026-08-28 against <https://ios-review-gate.sociobot.in>. The live static files
+match the candidate. Do not release it yet.
 
-### Repaired in this repository
+### Release blockers
 
-- The landing install command and demo packet now have an accessible name and
-  `tabindex="0"`, so their horizontal scroll areas work with a keyboard at
-  390 px.
-- The demo banner has independent foreground/background color tokens. In dark
-  mode it is now `#F5F0DF` on `#07131F`, rather than inheriting the inverted
-  paper token.
-- The service worker is now cache version `ios-review-gate-v2`; it precaches
-  Vite's emitted JS/CSS along with the shell, takes control immediately, and
-  cleans up the previous cache. A warmed `/demo` reloads offline in a fresh
-  browser context.
-- Regression coverage was added for both mobile axe findings, focus of both
-  code samples, and offline demo reload.
+- **High — checkout unavailable:** the live $39 “Buy Team license” URL returns
+  HTTP 404 with `{"error":"enabled factory product","status":404}`.
+- **High — invalid releases pass:** empty app/owner/bundle/version/build values,
+  a zero-byte `.jpg`, and negative queue durations each produced exit 0 and a
+  PASS decision.
+- **High — false toolchain claim:** README promises Rust 1.85+, but
+  `cargo +1.85.0 test --all-targets --locked` fails at `src/lib.rs:310` because
+  the let-chain is unstable on that compiler.
+- **High — incomplete privacy claim test:** `browser-demo-local` claims the
+  demo saves nothing, but its test only checks request origins. The live demo
+  leaves user/sample storage empty but necessarily writes its offline shell to
+  Cache Storage, contradicting `.factory/demo.md` as written.
 
-## Verification evidence (2026-08-28)
+### Other defects
 
-From a clean `npm ci` install:
+- **Medium:** the designed missing page returns HTTP 200, not HTTP 404.
+- **Medium:** the 390 px wordmark, inline legal links, email links, and footer
+  links have measured touch boxes below 44×44 px.
+- **Low:** 200% text at 390 px creates 10 px of horizontal overflow and places
+  the end of the Privacy navigation link off-screen.
 
-```sh
-cargo fmt --check
-cargo clippy --all-targets -- -D warnings
-npm test
-cargo package
-```
+## What passed
 
-All passed. `npm test` ran 10 Rust integration tests, 3 Node contract tests,
-and 14 Playwright tests. The new Playwright coverage includes 390×844 light
-and dark axe checks, keyboard focus for code regions, dark demo controls, and
-an offline reload after service-worker warm-up. Production build output is
-5.44 KB gzip JavaScript and 3.08 KB gzip CSS.
+- Mandatory cold first-read and one-click sample demo.
+- All 10 exact `.factory/claims.json` commands at the command level.
+- `npm ci`, `cargo fmt --check`, clippy with warnings denied, `npm test`, exact
+  `npm run build`, `cargo package`, and a clean install from the packaged crate.
+- Normal CLI demo/check, JSON, packet, policy, failure exit codes, malformed
+  input, missing-file, and unwritable-output recovery paths on Rust 1.98.
+- Live candidate hashes, HTTPS/security headers, same-origin demo traffic, no
+  console errors, desktop/390 px layouts, keyboard focus and navigation,
+  reduced motion, and all light/dark route axe scans.
+- Service-worker update and warmed offline `/demo` reload.
+- Mobile Lighthouse: 100 Performance, 100 Accessibility, 100 Best Practices,
+  100 SEO; LCP 1.6 s, CLS 0.028, TBT 20 ms, 122 KiB transferred.
+- Verification endpoint rate limit: after cooldown, requests 1–30 returned
+  200; request 31 onward returned 429 with `Retry-After: 4`.
 
-`cargo package` verified the 24-file crate (95.3 KB compressed). A clean
-consumer install was also exercised with:
-
-```sh
-cargo install --path . --root <temporary-root>
-<temporary-root>/bin/ios-review-gate --help
-<temporary-root>/bin/ios-review-gate demo --json
-```
-
-The installed binary printed its documented help and the bundled demo returned
-`passed: true` with a temporary packet path.
-
-Live checks after deployment:
-
-- `/opt/fleet/lib/verify-url.sh https://ios-review-gate.sociobot.in <temp>`:
-  HTTP 200, 720 ms load, correct title/lang, one `h1`, main landmark, no
-  missing alt text or unlabeled buttons, and no console errors.
-- Desktop keyboard activation opened `/demo`; demo traffic was same-origin
-  only.
-- A 390×844 dark live `/demo` axe run had no serious or critical violations;
-  the named packet region received focus; after warm-up it reloaded offline
-  with `Inspect a complete sample release` visible.
-- Live security headers include HSTS, CSP, `X-Content-Type-Options`,
-  Referrer-Policy, and Permissions-Policy. The deployed service worker is
-  no-cache and the static deployment succeeded.
-
-## Remaining release blockers outside this repository
-
-The static deployment and CLI do not own the Sociobot billing service. No
-authorized product-registration or verification-rate-limit management command
-was present in this worker image; the supplied deployment tool only manages
-the static web app. Re-checking production after this deployment found:
-
-- `GET https://api.sociobot.in/api/v1/products/ios-review-gate/checkout`
-  still returns HTTP 404 with `{"error":"enabled factory product","status":404}`.
-- A 30-request concurrent burst to
-  `/api/v1/products/ios-review-gate/verify?license=qa-rate-limit-token`
-  still returned 30 HTTP 200 responses and no HTTP 429 threshold. A
-  `Retry-After: 4` header was present on a single 200 response, but it does
-  not enforce the required rate limit.
-
-Therefore the two billing-service findings from the independent verification
-remain release-blocking: enable/register the $39 `ios-review-gate` product
-with return URL `https://ios-review-gate.sociobot.in/`, and enforce a
-per-IP/token verification limit that returns HTTP 429 plus `Retry-After`.
-The accessibility defects and offline shell issue are repaired and deployed.
-
-## Run, package, and deploy
+## Verification commands
 
 ```sh
 npm ci
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
 npm test
 npm run build
 cargo package
-/opt/fleet/lib/deploy-static.sh ios-review-gate dist/site
+cargo install --path target/package/ios-review-gate-0.1.0 --root <temp>
+cargo +1.85.0 test --all-targets --locked
+/opt/fleet/lib/verify-url.sh https://ios-review-gate.sociobot.in <temp>
 ```
 
-The factory owns registry publication and billing-service configuration; do
-not publish the crate from this repository.
+The complete evidence, claim matrix, browser matrix, rate-limit threshold, and
+required fixes are in [verification-2.md](verification-2.md). No product code
+was modified by the verifier.
