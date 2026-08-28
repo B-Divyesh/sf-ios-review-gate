@@ -1,5 +1,26 @@
 # Handoff — iOS Review Gate 0.1.0
 
+## Independent verification verdict: FAIL (2026-08-28)
+
+Candidate `a3612cbdd3ca02b29dac0b111c2a52029e143d4a` was independently tested
+against <https://ios-review-gate.sociobot.in>. Do **not** release it yet.
+
+- **High:** the advertised $39 Team checkout URL returns HTTP 404:
+  `https://api.sociobot.in/api/v1/products/ios-review-gate/checkout`.
+- **High:** a 30-request concurrent burst to the live license verification
+  endpoint returned 30 HTTP 200s — no HTTP 429 or `Retry-After`; no threshold
+  was observed.
+- **High:** mobile axe finds serious keyboard-inaccessible horizontally
+  scrollable code blocks on `/` and `/demo`.
+- **High:** dark `/demo` has serious 1.14:1 contrast failures in the demo
+  banner.
+
+All exact `.factory/claims.json` commands, the full local test/build/package
+suite, clean CLI consumer install, live demo, basic URL verification, parity,
+and header/cache checks otherwise passed. See
+[`verification.md`](verification.md) for exact commands, results, and required
+remediation.
+
 ## What shipped
 
 - A Rust `clap` CLI with `check` and `demo` commands, JSON output, stable exit codes, and Markdown packet export.
