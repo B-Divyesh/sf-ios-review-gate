@@ -1,0 +1,17 @@
+id: apple-2026.1
+published: 2026-08-28
+required_localized_fields: [name, subtitle, description, keywords, release_notes]
+localized_field_limits:
+  name: 30
+  subtitle: 30
+  description: 4000
+  keywords: 100
+  release_notes: 4000
+screenshots_per_set:
+  minimum: 1
+  maximum: 10
+required_reason_apis:
+  DiskSpace: [E174.1]
+  FileTimestamp: [C617.1]
+  SystemBootTime: [35F9.1]
+  UserDefaults: [CA92.1]

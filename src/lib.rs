@@ -1,0 +1,560 @@
+use chrono::{Duration, NaiveDate, Utc};
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::BTreeMap,
+    fs,
+    path::{Path, PathBuf},
+};
+
+pub const RULESET: &str = "apple-2026.1";
+
+#[derive(Debug, Deserialize)]
+struct RuleSet {
+    id: String,
+    localized_field_limits: BTreeMap<String, usize>,
+    screenshots_per_set: ScreenshotLimits,
+    required_reason_apis: BTreeMap<String, Vec<String>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ScreenshotLimits {
+    minimum: usize,
+    maximum: usize,
+}
+
+fn official_rules() -> RuleSet {
+    let rules: RuleSet = serde_yaml::from_str(include_str!("../rules/apple-2026.1.yaml"))
+        .expect("the bundled rule file must be valid");
+    debug_assert_eq!(rules.id, RULESET);
+    rules
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ArtifactMetadata {
+    pub bundle_id: String,
+    pub version: String,
+    pub build: String,
+    pub privacy_manifest: bool,
+    #[serde(default)]
+    pub privacy_tracking: bool,
+    #[serde(default)]
+    pub privacy_collected_data: Vec<String>,
+    #[serde(default)]
+    pub accessed_apis: Vec<AccessedApi>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AccessedApi {
+    pub category: String,
+    #[serde(default)]
+    pub reasons: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Release {
+    pub app_name: String,
+    pub bundle_id: String,
+    pub version: String,
+    pub build: String,
+    pub submitted_by: String,
+    pub intended_submission: NaiveDate,
+    pub locales: BTreeMap<String, LocalizedMetadata>,
+    pub screenshots: BTreeMap<String, BTreeMap<String, Vec<String>>>,
+    pub privacy: ReleasePrivacy,
+    #[serde(default)]
+    pub queue: QueueConfig,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LocalizedMetadata {
+    pub name: String,
+    pub subtitle: String,
+    pub description: String,
+    pub keywords: String,
+    pub release_notes: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ReleasePrivacy {
+    #[serde(default)]
+    pub tracking: bool,
+    #[serde(default)]
+    pub collected_data: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Default)]
+pub struct QueueConfig {
+    #[serde(default = "default_review_days")]
+    pub typical_review_days: i64,
+    #[serde(default = "default_buffer_days")]
+    pub buffer_days: i64,
+    #[serde(default)]
+    pub active_submissions: Vec<QueuedSubmission>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct TeamPolicy {
+    pub name: String,
+    #[serde(default = "default_history_limit")]
+    pub max_active_submissions: usize,
+    #[serde(default)]
+    pub additional_reason_codes: BTreeMap<String, Vec<String>>,
+}
+
+fn default_history_limit() -> usize {
+    3
+}
+fn default_review_days() -> i64 {
+    2
+}
+fn default_buffer_days() -> i64 {
+    2
+}
+
+#[derive(Debug, Deserialize)]
+pub struct QueuedSubmission {
+    pub version: String,
+    pub build: String,
+    pub status: String,
+    pub submitted_on: NaiveDate,
+}
+
+#[derive(Debug, Serialize, Clone, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Severity {
+    Error,
+    Warning,
+}
+
+#[derive(Debug, Serialize, Clone)]
+pub struct Finding {
+    pub code: String,
+    pub severity: Severity,
+    pub message: String,
+    pub fix: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct Summary {
+    pub errors: usize,
+    pub warnings: usize,
+    pub checks: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct QueuePlan {
+    pub intended_submission: NaiveDate,
+    pub estimated_decision: NaiveDate,
+    pub buffered_decision: NaiveDate,
+    pub active_submissions: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GateReport {
+    pub passed: bool,
+    pub ruleset: &'static str,
+    pub policy: Option<String>,
+    pub summary: Summary,
+    pub findings: Vec<Finding>,
+    pub queue: QueuePlan,
+    pub packet_path: Option<PathBuf>,
+}
+
+fn finding(
+    code: &str,
+    severity: Severity,
+    message: impl Into<String>,
+    fix: impl Into<String>,
+) -> Finding {
+    Finding {
+        code: code.into(),
+        severity,
+        message: message.into(),
+        fix: fix.into(),
+    }
+}
+
+pub fn check(metadata: &ArtifactMetadata, release: &Release, release_dir: &Path) -> GateReport {
+    check_with_policy(metadata, release, release_dir, None)
+}
+
+pub fn check_with_policy(
+    metadata: &ArtifactMetadata,
+    release: &Release,
+    release_dir: &Path,
+    policy: Option<&TeamPolicy>,
+) -> GateReport {
+    let mut findings = Vec::new();
+    let rules = official_rules();
+    if metadata.bundle_id != release.bundle_id {
+        findings.push(finding(
+            "identity.bundle_id",
+            Severity::Error,
+            format!(
+                "Bundle ID is {} in the artifact but {} in release.yaml.",
+                metadata.bundle_id, release.bundle_id
+            ),
+            "Set both inputs to the same bundle ID.",
+        ));
+    }
+    if metadata.version != release.version {
+        findings.push(finding(
+            "identity.version",
+            Severity::Error,
+            format!(
+                "Version is {} in the artifact but {} in release.yaml.",
+                metadata.version, release.version
+            ),
+            "Set release.yaml to the archived marketing version.",
+        ));
+    }
+    if metadata.build != release.build {
+        findings.push(finding(
+            "identity.build",
+            Severity::Error,
+            format!(
+                "Build is {} in the artifact but {} in release.yaml.",
+                metadata.build, release.build
+            ),
+            "Set release.yaml to the archived build number.",
+        ));
+    }
+    if !metadata.privacy_manifest {
+        findings.push(finding(
+            "privacy.manifest_missing",
+            Severity::Error,
+            "The artifact export says PrivacyInfo.xcprivacy is missing.",
+            "Add a privacy manifest to the app target and export metadata again.",
+        ));
+    }
+    if metadata.privacy_tracking != release.privacy.tracking {
+        findings.push(finding(
+            "privacy.tracking_mismatch",
+            Severity::Error,
+            "Tracking differs between the artifact and release.yaml.",
+            "Make the release privacy answer match the built app.",
+        ));
+    }
+    let mut built_data = metadata.privacy_collected_data.clone();
+    built_data.sort();
+    built_data.dedup();
+    let mut declared_data = release.privacy.collected_data.clone();
+    declared_data.sort();
+    declared_data.dedup();
+    if built_data != declared_data {
+        findings.push(finding(
+            "privacy.data_mismatch",
+            Severity::Error,
+            format!(
+                "Collected data differs. Artifact: {:?}; release: {:?}.",
+                built_data, declared_data
+            ),
+            "Declare the same collected-data categories in both inputs.",
+        ));
+    }
+
+    let mut approved = rules.required_reason_apis;
+    if let Some(policy) = policy {
+        for (category, reasons) in &policy.additional_reason_codes {
+            approved
+                .entry(category.clone())
+                .or_default()
+                .extend(reasons.iter().cloned());
+        }
+    }
+    for api in &metadata.accessed_apis {
+        match approved.get(api.category.as_str()) {
+            None => findings.push(finding(
+                "privacy.api_unknown",
+                Severity::Warning,
+                format!("{} is not covered by ruleset {}.", api.category, RULESET),
+                "Review Apple's current required-reason API list.",
+            )),
+            Some(valid) if !api.reasons.iter().any(|reason| valid.contains(reason)) => findings
+                .push(finding(
+                    "privacy.reason_missing",
+                    Severity::Error,
+                    format!(
+                        "{} has no approved reason code in the export.",
+                        api.category
+                    ),
+                    format!("Add an approved reason: {}.", valid.join(", ")),
+                )),
+            _ => {}
+        }
+    }
+
+    if release.locales.is_empty() {
+        findings.push(finding(
+            "locales.empty",
+            Severity::Error,
+            "No localized metadata is listed.",
+            "Add at least one locale under locales.",
+        ));
+    }
+    for (locale, fields) in &release.locales {
+        for (name, value) in [
+            ("name", &fields.name),
+            ("subtitle", &fields.subtitle),
+            ("description", &fields.description),
+            ("keywords", &fields.keywords),
+            ("release_notes", &fields.release_notes),
+        ] {
+            if value.trim().is_empty() {
+                findings.push(finding(
+                    "locales.field_empty",
+                    Severity::Error,
+                    format!("{} has no {}.", locale, name),
+                    format!("Add {} for {}.", name, locale),
+                ));
+            } else if let Some(limit) = rules.localized_field_limits.get(name)
+                && value.chars().count() > *limit
+            {
+                findings.push(finding(
+                    "locales.field_too_long",
+                    Severity::Error,
+                    format!(
+                        "{} {} has {} characters; the {} limit is {}.",
+                        locale,
+                        name,
+                        value.chars().count(),
+                        RULESET,
+                        limit
+                    ),
+                    format!("Shorten {} to {} characters or fewer.", name, limit),
+                ));
+            }
+        }
+        match release.screenshots.get(locale) {
+            None => findings.push(finding(
+                "screenshots.locale_missing",
+                Severity::Error,
+                format!("{} has no screenshot set.", locale),
+                format!("Add screenshots for {}.", locale),
+            )),
+            Some(devices) if devices.is_empty() => findings.push(finding(
+                "screenshots.devices_empty",
+                Severity::Error,
+                format!("{} has no screenshot device set.", locale),
+                "Add at least one device set.",
+            )),
+            Some(devices) => {
+                for (device, paths) in devices {
+                    if paths.len() < rules.screenshots_per_set.minimum {
+                        findings.push(finding(
+                            "screenshots.set_empty",
+                            Severity::Error,
+                            format!("{} / {} has no screenshots.", locale, device),
+                            "Add at least one screenshot path.",
+                        ));
+                    } else if paths.len() > rules.screenshots_per_set.maximum {
+                        findings.push(finding(
+                            "screenshots.set_too_large",
+                            Severity::Error,
+                            format!(
+                                "{} / {} has {} screenshots; the {} limit is {}.",
+                                locale,
+                                device,
+                                paths.len(),
+                                RULESET,
+                                rules.screenshots_per_set.maximum
+                            ),
+                            format!(
+                                "Keep at most {} screenshots in this set.",
+                                rules.screenshots_per_set.maximum
+                            ),
+                        ));
+                    }
+                    for raw in paths {
+                        let path = release_dir.join(raw);
+                        let ext = path
+                            .extension()
+                            .and_then(|v| v.to_str())
+                            .unwrap_or("")
+                            .to_ascii_lowercase();
+                        if !matches!(ext.as_str(), "png" | "jpg" | "jpeg") {
+                            findings.push(finding(
+                                "screenshots.format",
+                                Severity::Error,
+                                format!("{} is not PNG or JPEG.", raw),
+                                "Export the screenshot as PNG or JPEG.",
+                            ));
+                        } else if !path.is_file() {
+                            findings.push(finding(
+                                "screenshots.file_missing",
+                                Severity::Error,
+                                format!("{} does not exist.", raw),
+                                "Fix the path or add the screenshot file.",
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for locale in release.screenshots.keys() {
+        if !release.locales.contains_key(locale) {
+            findings.push(finding(
+                "screenshots.locale_orphan",
+                Severity::Warning,
+                format!("{} has screenshots but no localized metadata.", locale),
+                "Add localized metadata or remove the screenshot set.",
+            ));
+        }
+    }
+    let history_limit = policy.map_or(3, |item| item.max_active_submissions.max(3));
+    if release.queue.active_submissions.len() > history_limit {
+        findings.push(finding(
+            "queue.history_limit",
+            Severity::Warning,
+            format!(
+                "The queue has more than the configured {} active submissions.",
+                history_limit
+            ),
+            "Raise max_active_submissions in a Team policy or shorten the queue history.",
+        ));
+    }
+    let active_count = release
+        .queue
+        .active_submissions
+        .iter()
+        .filter(|item| {
+            matches!(
+                item.status.as_str(),
+                "waiting_for_review" | "in_review" | "pending_developer_release"
+            )
+        })
+        .count();
+    if active_count > 0 {
+        findings.push(finding(
+            "queue.active",
+            Severity::Warning,
+            format!(
+                "{} active submission may affect this release window.",
+                active_count
+            ),
+            "Confirm whether to finish or remove the active submission before queuing this build.",
+        ));
+    }
+    let review_days = release.queue.typical_review_days.max(0);
+    let estimated_decision = release.intended_submission
+        + Duration::days(review_days.saturating_mul(active_count as i64 + 1));
+    let queue = QueuePlan {
+        intended_submission: release.intended_submission,
+        estimated_decision,
+        buffered_decision: estimated_decision + Duration::days(release.queue.buffer_days.max(0)),
+        active_submissions: active_count,
+    };
+    let errors = findings
+        .iter()
+        .filter(|f| f.severity == Severity::Error)
+        .count();
+    let warnings = findings.len() - errors;
+    GateReport {
+        passed: errors == 0,
+        ruleset: RULESET,
+        policy: policy.map(|item| item.name.clone()),
+        summary: Summary {
+            errors,
+            warnings,
+            checks: 8,
+        },
+        findings,
+        queue,
+        packet_path: None,
+    }
+}
+
+pub fn run_files(
+    metadata_path: &Path,
+    release_path: &Path,
+    output: Option<&Path>,
+) -> Result<GateReport, String> {
+    run_files_with_policy(metadata_path, release_path, output, None)
+}
+
+pub fn run_files_with_policy(
+    metadata_path: &Path,
+    release_path: &Path,
+    output: Option<&Path>,
+    policy_path: Option<&Path>,
+) -> Result<GateReport, String> {
+    let metadata: ArtifactMetadata = serde_json::from_str(
+        &fs::read_to_string(metadata_path)
+            .map_err(|e| format!("Could not read {}: {}", metadata_path.display(), e))?,
+    )
+    .map_err(|e| format!("Could not parse {}: {}", metadata_path.display(), e))?;
+    let release: Release = serde_yaml::from_str(
+        &fs::read_to_string(release_path)
+            .map_err(|e| format!("Could not read {}: {}", release_path.display(), e))?,
+    )
+    .map_err(|e| format!("Could not parse {}: {}", release_path.display(), e))?;
+    let release_dir = release_path.parent().unwrap_or_else(|| Path::new("."));
+    let policy: Option<TeamPolicy> = policy_path
+        .map(|path| {
+            serde_yaml::from_str(
+                &fs::read_to_string(path)
+                    .map_err(|e| format!("Could not read {}: {}", path.display(), e))?,
+            )
+            .map_err(|e| format!("Could not parse {}: {}", path.display(), e))
+        })
+        .transpose()?;
+    let mut report = check_with_policy(&metadata, &release, release_dir, policy.as_ref());
+    if let Some(path) = output {
+        fs::write(path, render_packet(&metadata, &release, &report))
+            .map_err(|e| format!("Could not write {}: {}", path.display(), e))?;
+        report.packet_path = Some(path.to_path_buf());
+    }
+    Ok(report)
+}
+
+pub fn render_packet(
+    metadata: &ArtifactMetadata,
+    release: &Release,
+    report: &GateReport,
+) -> String {
+    let generated = Utc::now().date_naive();
+    let mark = if report.passed { "PASS" } else { "HOLD" };
+    let policy_line = report
+        .policy
+        .as_ref()
+        .map(|name| format!("  \nTeam policy: `{name}`"))
+        .unwrap_or_default();
+    let mut out = format!(
+        "# App Review packet — {} {} ({})\n\n**Decision: {}**  \nGenerated: {}  \nRules: `{}`{}  \nOwner: {}\n\n## Artifact\n\n- Bundle ID: `{}`\n- Version: `{}`\n- Build: `{}`\n- Privacy manifest: {}\n\n## Gate findings\n\n",
+        release.app_name,
+        release.version,
+        release.build,
+        mark,
+        generated,
+        RULESET,
+        policy_line,
+        release.submitted_by,
+        metadata.bundle_id,
+        metadata.version,
+        metadata.build,
+        if metadata.privacy_manifest {
+            "present"
+        } else {
+            "missing"
+        }
+    );
+    if report.findings.is_empty() {
+        out.push_str("No findings. The checked inputs agree.\n");
+    }
+    for f in &report.findings {
+        out.push_str(&format!(
+            "- **{:?} · `{}`** — {} Fix: {}\n",
+            f.severity, f.code, f.message, f.fix
+        ));
+    }
+    out.push_str(&format!("\n## Queue plan\n\n- Intended submission: {}\n- Estimated decision: {}\n- Buffered decision: {}\n- Active submissions: {}\n\n## Localizations\n\n", report.queue.intended_submission, report.queue.estimated_decision, report.queue.buffered_decision, report.queue.active_submissions));
+    for locale in release.locales.keys() {
+        out.push_str(&format!(
+            "- `{}`: metadata and screenshot paths checked\n",
+            locale
+        ));
+    }
+    out.push_str("\n## Decision record\n\n- [ ] Reviewer confirmed the artifact identity.\n- [ ] Reviewer confirmed privacy answers.\n- [ ] Reviewer confirmed screenshots and localized copy.\n- [ ] Release owner accepted the queue window.\n\nThis packet is a local preflight record. It is not an Apple approval.\n");
+    out
+}

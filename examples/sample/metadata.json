@@ -1,0 +1,9 @@
+{
+  "bundle_id": "in.sociobot.harborlog",
+  "version": "2.4.0",
+  "build": "108",
+  "privacy_manifest": true,
+  "privacy_tracking": false,
+  "privacy_collected_data": ["email_address"],
+  "accessed_apis": [{"category": "UserDefaults", "reasons": ["CA92.1"]}]
+}

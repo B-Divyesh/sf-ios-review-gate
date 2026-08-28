@@ -1,0 +1,5 @@
+name: Release team
+max_active_submissions: 8
+additional_reason_codes:
+  UserDefaults:
+    - CA92.2

@@ -1,0 +1,24 @@
+app_name: Harbor Log
+bundle_id: in.sociobot.harborlog
+version: 2.4.0
+build: "108"
+submitted_by: Priya Raman
+intended_submission: 2026-09-02
+locales:
+  en-US:
+    name: Harbor Log
+    subtitle: Private trip notes
+    description: Keep a private record of fishing trips, weather, and catches.
+    keywords: fishing,log,weather,private
+    release_notes: Adds tide notes and fixes map labels.
+screenshots:
+  en-US:
+    iphone-69:
+      - screenshots/en-US/iphone-69/home.jpg
+privacy:
+  tracking: false
+  collected_data: [email_address]
+queue:
+  typical_review_days: 2
+  buffer_days: 2
+  active_submissions: []
