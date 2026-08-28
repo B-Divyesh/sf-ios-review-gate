@@ -39,6 +39,30 @@ test('dark treatment has no serious axe findings', async ({ page }) => {
   expect(Number.parseFloat(duration)).toBeLessThanOrEqual(0.001);
 });
 
+test('mobile code samples are keyboard focusable and have no serious axe findings', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const [path, label] of [['/', 'Install and run command'], ['/demo', 'Sample App Review packet']]) {
+    await page.goto(path);
+    const codeSample = page.getByLabel(label);
+    await codeSample.focus();
+    await expect(codeSample).toBeFocused();
+    const results = await new AxeBuilder({ page }).analyze();
+    expect(results.violations.filter(v => ['serious', 'critical'].includes(v.impact))).toEqual([]);
+  }
+});
+
+test('dark mobile demo banner has readable controls and no serious axe findings', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/demo');
+  const banner = page.getByLabel('Demo mode');
+  await expect(banner).toContainText('Demo — sample data, nothing is saved');
+  await expect(page.getByRole('button', { name: 'Reset demo' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Start for real' })).toBeVisible();
+  const results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter(v => ['serious', 'critical'].includes(v.impact))).toEqual([]);
+});
+
 test('keyboard activation opens the sample and moves focus to its heading', async ({ page }) => {
   await page.goto('/');
   const action = page.getByRole('link', { name: 'Try it with sample data' });
