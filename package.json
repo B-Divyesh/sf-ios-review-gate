@@ -1,0 +1,21 @@
+{
+  "name": "ios-review-gate-site",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "preview": "vite preview --host 0.0.0.0",
+    "build:site": "vite build",
+    "build:cli": "cargo build --release",
+    "build": "npm run build:cli && npm run build:site",
+    "test:unit": "cargo test --all-targets && node --test tests/site.test.js",
+    "test:e2e": "playwright test",
+    "test": "npm run test:unit && npm run build:site && npm run test:e2e"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.10.2",
+    "@playwright/test": "1.58.2",
+    "vite": "7.3.6"
+  }
+}
