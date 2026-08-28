@@ -88,6 +88,17 @@ test('@claim:license-restore verifies and stores a Team license', async ({ page 
   expect(await page.evaluate(() => localStorage.getItem('sb_license:ios-review-gate'))).toBe('test-token');
 });
 
+test('checkout return stores, strips, and can remove a Team license', async ({ page }) => {
+  await page.route('https://api.sociobot.in/api/v1/products/ios-review-gate/verify?license=return-token', route => route.fulfill({ json: { valid: true, reason: 'ok', expires_at: null } }));
+  await page.goto('/?license=return-token');
+  await expect(page).toHaveURL('http://127.0.0.1:4173/');
+  await expect(page.getByText('Team license active')).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('sb_license:ios-review-gate'))).toBe('return-token');
+  await page.getByRole('button', { name: 'Remove license from this browser' }).click();
+  await expect(page.getByLabel('Have a license? Paste it here.')).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('sb_license:ios-review-gate'))).toBeNull();
+});
+
 test('@claim:team-policy-download writes the licensed policy settings', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('sb_license:ios-review-gate', 'test-token');

@@ -141,9 +141,11 @@ fn claim_markdown_packet_writes_dated_decision_record() {
     .unwrap();
     let report = run_files(&metadata, &release, Some(&output)).unwrap();
     let packet = fs::read_to_string(output).unwrap();
+    let today = chrono::Utc::now().date_naive();
     assert!(report.passed);
     assert!(
         packet.contains("Decision: PASS")
+            && packet.contains(&format!("Generated: {today}"))
             && packet.contains("Rules: `apple-2026.1`")
             && packet.contains("## Queue plan")
             && packet.contains("## Decision record")
