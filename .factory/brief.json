@@ -1,0 +1,7 @@
+{
+  "slug": "ios-review-gate",
+  "title": "iOS Review Gate",
+  "summary": "Check an iOS release and print its review packet.",
+  "artifact_class": "cli",
+  "monetization": "one-time"
+}

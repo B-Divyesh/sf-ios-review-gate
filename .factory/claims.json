@@ -1,0 +1,72 @@
+[
+  {
+    "id": "identity-consistency",
+    "claim": "Checks version, build, and bundle ID consistency",
+    "where": "landing procedure, README",
+    "test": "cargo test claim_identity_consistency",
+    "sandbox": "bundled sample with three seeded identity mismatches"
+  },
+  {
+    "id": "release-completeness",
+    "claim": "Checks localized metadata, screenshot paths, privacy declarations, and reason codes",
+    "where": "landing, README",
+    "test": "cargo test claim_release_completeness",
+    "sandbox": "bundled sample with seven seeded release inconsistencies"
+  },
+  {
+    "id": "markdown-packet",
+    "claim": "Prints a dated Markdown decision packet",
+    "where": "landing, README",
+    "test": "cargo test claim_markdown_packet",
+    "sandbox": "temporary directory populated only with bundled sample data"
+  },
+  {
+    "id": "bundled-cli-demo",
+    "claim": "The CLI demo runs on bundled data in a new temporary workspace",
+    "where": "README",
+    "test": "cargo test claim_bundled_demo",
+    "sandbox": "fresh command process; assert packet exists under the reported temp path"
+  },
+  {
+    "id": "queue-plan",
+    "claim": "Queue dates account for an active submission and the configured buffer",
+    "where": "landing packet preview, README",
+    "test": "cargo test claim_queue_plan",
+    "sandbox": "bundled sample with one active submission, two review days, and two buffer days"
+  },
+  {
+    "id": "cli-local",
+    "claim": "The CLI has no telemetry or network client and reads only local inputs",
+    "where": "landing privacy section, README, privacy page",
+    "test": "cargo test claim_cli_local",
+    "sandbox": "compiled CLI source and dependency manifest checked for network client markers"
+  },
+  {
+    "id": "one-click-demo",
+    "claim": "The site opens a complete sample release in one click",
+    "where": "landing primary action",
+    "test": "npx playwright test --grep @claim:one-click-demo",
+    "sandbox": "fresh browser context at the home page"
+  },
+  {
+    "id": "browser-demo-local",
+    "claim": "The browser demo saves nothing and sends no cross-origin requests",
+    "where": "demo banner and privacy page",
+    "test": "npx playwright test --grep @claim:browser-demo-local",
+    "sandbox": "fresh browser context with every request recorded"
+  },
+  {
+    "id": "license-restore",
+    "claim": "A buyer can paste, verify, and store a Team license",
+    "where": "paid tier and privacy page",
+    "test": "npx playwright test --grep @claim:license-restore",
+    "sandbox": "fresh browser context with a recorded valid Sociobot verification response"
+  },
+  {
+    "id": "team-policy-download",
+    "claim": "A verified Team license downloads a local policy file with the chosen queue limit",
+    "where": "paid tier",
+    "test": "npx playwright test --grep @claim:team-policy-download",
+    "sandbox": "fresh browser context with a cached recorded license verdict"
+  }
+]
