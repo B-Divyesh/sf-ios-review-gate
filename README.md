@@ -62,6 +62,13 @@ The JSON object contains `passed`, `summary`, `findings`, `queue`, and `packet_p
 
 Rules are versioned in the binary and named in every packet. Version `apple-2026.1` covers required localized fields, screenshot existence, privacy manifest presence, collected-data agreement, and approved reason codes for declared API categories.
 
+## Queue input
+
+Each queued submission needs a version, build, submitted date, and one status:
+`waiting_for_review`, `in_review`, `pending_developer_release`, or `completed`.
+Unknown or incomplete queue entries produce a HOLD result. Review and buffer days
+must be zero or positive and must fit a real calendar date.
+
 ## Develop and verify
 
 ```sh

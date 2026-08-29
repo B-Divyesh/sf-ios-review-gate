@@ -137,6 +137,68 @@ fn invalid_identity_images_and_queue_durations_cannot_pass() {
 }
 
 #[test]
+fn claim_queue_input_validation_rejects_incomplete_or_unknown_entries() {
+    let (metadata, mut release) = sample();
+    release.queue.active_submissions.push(
+        serde_yaml::from_str(
+            "version: \"\"\nbuild: \"\"\nstatus: typo_in_reveiw\nsubmitted_on: 2026-09-03",
+        )
+        .unwrap(),
+    );
+
+    let report = check(&metadata, &release, Path::new("examples/sample"));
+    assert!(
+        !report.passed,
+        "an invalid queue entry must never produce PASS"
+    );
+    assert_eq!(
+        report.queue.active_submissions, 1,
+        "unknown status is conservative"
+    );
+    for code in [
+        "queue.version_missing",
+        "queue.build_missing",
+        "queue.status_invalid",
+    ] {
+        assert!(
+            report.findings.iter().any(|item| item.code == code),
+            "missing {code}"
+        );
+    }
+}
+
+#[test]
+fn claim_queue_date_limits_hold_without_panicking() {
+    for (field, value, code) in [
+        (
+            "typical_review_days",
+            i64::MAX,
+            "queue.review_days_out_of_range",
+        ),
+        (
+            "typical_review_days",
+            i64::MIN,
+            "queue.review_days_negative",
+        ),
+        ("buffer_days", i64::MAX, "queue.buffer_days_out_of_range"),
+        ("buffer_days", i64::MIN, "queue.buffer_days_negative"),
+    ] {
+        let (metadata, mut release) = sample();
+        match field {
+            "typical_review_days" => release.queue.typical_review_days = value,
+            "buffer_days" => release.queue.buffer_days = value,
+            _ => unreachable!(),
+        }
+        let report = check(&metadata, &release, Path::new("examples/sample"));
+        assert!(!report.passed, "{field}={value} must HOLD");
+        assert!(
+            report.findings.iter().any(|item| item.code == code),
+            "missing {code} for {field}={value}"
+        );
+    }
+}
+
+#[test]
 fn claim_team_policy_supports_queue_history_beyond_three_submissions() {
     let (mut metadata, mut release) = sample();
     metadata.accessed_apis[0].reasons = vec!["TEAM.1".into()];

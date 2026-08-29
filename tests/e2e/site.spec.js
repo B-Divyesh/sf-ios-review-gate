@@ -127,6 +127,41 @@ test('mobile 200% text reflows navigation without overflow and all links meet th
   }
 });
 
+test('mobile 200% text keeps every demo result edge visible', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/demo');
+  await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+
+  const layout = await page.evaluate(() => {
+    const viewport = document.documentElement.clientWidth;
+    const selectors = [
+      '.demo-page h1',
+      '.demo-page .lede',
+      '.sample-ledger',
+      '.terminal-sheet',
+      '#packet-title',
+      '[aria-label="Sample App Review packet"]',
+    ];
+    return {
+      viewport,
+      mainOverflow: getComputedStyle(document.querySelector('main')).overflowX,
+      scrollWidth: document.documentElement.scrollWidth,
+      boxes: selectors.map(selector => {
+        const box = document.querySelector(selector).getBoundingClientRect();
+        return { selector, left: box.left, right: box.right, width: box.width };
+      }),
+    };
+  });
+
+  expect(layout.mainOverflow).not.toBe('hidden');
+  expect(layout.scrollWidth).toBe(layout.viewport);
+  for (const box of layout.boxes) {
+    expect(box.left, `${box.selector} starts inside the viewport`).toBeGreaterThanOrEqual(0);
+    expect(box.right, `${box.selector} ends inside the viewport`).toBeLessThanOrEqual(layout.viewport);
+    expect(box.width, `${box.selector} has visible width`).toBeGreaterThan(0);
+  }
+});
+
 test('the deployable not-found page has a designed recovery route and a real 404 override', async ({ page }) => {
   await page.goto('/404.html');
   await expect(page.getByRole('heading', { level: 1, name: 'This release sheet is missing' })).toBeVisible();
@@ -163,6 +198,15 @@ test('@claim:license-restore verifies and stores a Team license', async ({ page 
   await page.getByRole('button', { name: 'Verify Team license' }).click();
   await expect(page.getByText('Team license active')).toBeVisible();
   expect(await page.evaluate(() => localStorage.getItem('sb_license:ios-review-gate'))).toBe('test-token');
+});
+
+test('an inactive Team license never points to an unavailable checkout', async ({ page }) => {
+  await page.route('https://api.sociobot.in/api/v1/products/ios-review-gate/verify?license=inactive-token', route => route.fulfill({ json: { valid: false, reason: 'invalid', expires_at: null } }));
+  await page.goto('/');
+  await page.getByLabel('Have a license? Paste it here.').fill('inactive-token');
+  await page.getByRole('button', { name: 'Verify Team license' }).click();
+  await expect(page.getByText('License not active. Check the token or contact your release administrator.')).toBeVisible();
+  await expect(page.getByText(/buy a license/i)).toHaveCount(0);
 });
 
 test('checkout return stores, strips, and can remove a Team license', async ({ page }) => {

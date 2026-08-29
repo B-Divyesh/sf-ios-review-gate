@@ -56,6 +56,20 @@
     "sandbox": "bundled sample with one active submission, two review days, and two buffer days"
   },
   {
+    "id": "queue-input-validation",
+    "claim": "Rejects incomplete or unknown queue entries before it can pass",
+    "where": "README queue input",
+    "test": "cargo test claim_queue_input_validation_rejects_incomplete_or_unknown_entries",
+    "sandbox": "bundled sample with blank version/build and an unknown status; assert HOLD findings and conservative queue count"
+  },
+  {
+    "id": "queue-date-limits",
+    "claim": "Rejects queue durations outside the calendar range without crashing",
+    "where": "README queue input",
+    "test": "cargo test claim_queue_date_limits_hold_without_panicking",
+    "sandbox": "bundled sample with maximum and minimum i64 review and buffer durations; assert HOLD findings"
+  },
+  {
     "id": "cli-local",
     "claim": "The CLI has no telemetry or network client and reads only local inputs",
     "where": "landing privacy section, README, privacy page",

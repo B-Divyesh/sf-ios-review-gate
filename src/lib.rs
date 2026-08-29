@@ -1,4 +1,4 @@
-use chrono::{Duration, NaiveDate, Utc};
+use chrono::{Days, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -119,6 +119,18 @@ pub struct QueuedSubmission {
     pub submitted_on: NaiveDate,
 }
 
+const ACTIVE_QUEUE_STATUSES: &[&str] = &[
+    "waiting_for_review",
+    "in_review",
+    "pending_developer_release",
+];
+const QUEUE_STATUSES: &[&str] = &[
+    "waiting_for_review",
+    "in_review",
+    "pending_developer_release",
+    "completed",
+];
+
 #[derive(Debug, Serialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
@@ -183,6 +195,39 @@ fn required_value(findings: &mut Vec<Finding>, code: &str, label: &str, value: &
             fix,
         ));
     }
+}
+
+fn checked_queue_date(
+    start: NaiveDate,
+    days: i64,
+    multiplier: u64,
+    label: &str,
+    code: &str,
+    fix: &str,
+    findings: &mut Vec<Finding>,
+) -> Option<NaiveDate> {
+    let Ok(days) = u64::try_from(days) else {
+        return None;
+    };
+    let Some(total_days) = days.checked_mul(multiplier) else {
+        findings.push(finding(
+            code,
+            Severity::Error,
+            format!("{label} is too large to produce a calendar date."),
+            fix,
+        ));
+        return None;
+    };
+    let Some(date) = start.checked_add_days(Days::new(total_days)) else {
+        findings.push(finding(
+            code,
+            Severity::Error,
+            format!("{label} is too large to produce a calendar date."),
+            fix,
+        ));
+        return None;
+    };
+    Some(date)
 }
 
 fn is_supported_image(path: &Path) -> bool {
@@ -499,15 +544,44 @@ pub fn check_with_policy(
             "Raise max_active_submissions in a Team policy or shorten the queue history.",
         ));
     }
+    for (index, item) in release.queue.active_submissions.iter().enumerate() {
+        let entry = index + 1;
+        required_value(
+            &mut findings,
+            "queue.version_missing",
+            &format!("Queue entry {entry} version"),
+            &item.version,
+            "Set version for every queued submission.",
+        );
+        required_value(
+            &mut findings,
+            "queue.build_missing",
+            &format!("Queue entry {entry} build"),
+            &item.build,
+            "Set build for every queued submission.",
+        );
+        if !QUEUE_STATUSES.contains(&item.status.as_str()) {
+            findings.push(finding(
+                "queue.status_invalid",
+                Severity::Error,
+                format!(
+                    "Queue entry {entry} has unsupported status {:?}. Allowed statuses: {}.",
+                    item.status,
+                    QUEUE_STATUSES.join(", ")
+                ),
+                "Set status to the current App Store review state.",
+            ));
+        }
+    }
     let active_count = release
         .queue
         .active_submissions
         .iter()
         .filter(|item| {
-            matches!(
-                item.status.as_str(),
-                "waiting_for_review" | "in_review" | "pending_developer_release"
-            )
+            ACTIVE_QUEUE_STATUSES.contains(&item.status.as_str())
+                // An unknown status can be a misspelling of an active state. Count it
+                // conservatively while the resulting HOLD is repaired.
+                || !QUEUE_STATUSES.contains(&item.status.as_str())
         })
         .count();
     if active_count > 0 {
@@ -537,13 +611,33 @@ pub fn check_with_policy(
             "Set buffer_days to zero or a positive number.",
         ));
     }
-    let review_days = release.queue.typical_review_days;
-    let estimated_decision = release.intended_submission
-        + Duration::days(review_days.saturating_mul(active_count as i64 + 1));
+    let active_slots = u64::try_from(active_count)
+        .unwrap_or(u64::MAX)
+        .saturating_add(1);
+    let estimated_decision = checked_queue_date(
+        release.intended_submission,
+        release.queue.typical_review_days,
+        active_slots,
+        "Typical review days",
+        "queue.review_days_out_of_range",
+        "Set typical_review_days so the estimated decision stays within the calendar range.",
+        &mut findings,
+    )
+    .unwrap_or(release.intended_submission);
+    let buffered_decision = checked_queue_date(
+        estimated_decision,
+        release.queue.buffer_days,
+        1,
+        "Buffer days",
+        "queue.buffer_days_out_of_range",
+        "Set buffer_days so the buffered decision stays within the calendar range.",
+        &mut findings,
+    )
+    .unwrap_or(estimated_decision);
     let queue = QueuePlan {
         intended_submission: release.intended_submission,
         estimated_decision,
-        buffered_decision: estimated_decision + Duration::days(release.queue.buffer_days),
+        buffered_decision,
         active_submissions: active_count,
     };
     let errors = findings

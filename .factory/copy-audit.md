@@ -35,7 +35,7 @@ Audited 2026-08-29 against the plain-words rules. Counts treat hyphenated terms 
 | 11 | Build a shared policy file for queue limits and approved reason codes. |
 | 4 | Verified on this device. |
 | 3 | License not active. |
-| 8 | Check the token or buy a license. |
+| 8 | Check the token or contact your release administrator. |
 | 6 | Could not check the license. |
 | 5 | Connect once and try again. |
 | 6 | License removed from this browser. |

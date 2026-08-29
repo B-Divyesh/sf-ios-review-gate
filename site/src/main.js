@@ -138,7 +138,7 @@ async function restoreLicense(event) {
   localStorage.setItem(LICENSE_KEY, token);
   const verdict = await verifyLicense(token);
   licenseActive = verdict === true;
-  licenseNotice = verdict === null ? 'Could not check the license. Connect once and try again.' : licenseActive ? 'Verified on this device.' : 'License not active. Check the token or buy a license.';
+  licenseNotice = verdict === null ? 'Could not check the license. Connect once and try again.' : licenseActive ? 'Verified on this device.' : 'License not active. Check the token or contact your release administrator.';
   renderPaidPanel();
 }
 
@@ -182,7 +182,7 @@ async function initializeLicense() {
   if (licenseActive) renderPaidPanel();
   const valid = await verifyLicense(token);
   if (valid !== null && valid !== licenseActive) { licenseActive = valid; renderPaidPanel(); }
-  if (valid === false) { licenseNotice = 'License no longer active. Check the token or buy a license.'; renderPaidPanel(); }
+  if (valid === false) { licenseNotice = 'License no longer active. Check the token or contact your release administrator.'; renderPaidPanel(); }
 }
 
 render();
