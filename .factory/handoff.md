@@ -1,89 +1,38 @@
-# Repair handoff — ready for release
+# Verification handoff — PASS
+
+**Verified candidate:** `e5eb710ff9bc65061e8a6558b5c57d30e01fd9f4`
+**Live URL:** <https://ios-review-gate.sociobot.in>
+**Date:** 2026-08-29 UTC
 
 ## Outcome
 
-The two release blockers from independent verification 11 of candidate
-`62ff8d7ceb460f87fd38efa8c8f8a0874050b907` are repaired. The repair commits
-are `1234074`, `8be38ab`, and `3d036cc`. The product remains a local Rust CLI with its
-static Vite documentation site; no product behavior, pricing, or researched
-scope changed.
+**PASS.** Independent verification found no release-blocking defects. The live footer identifies build `e5eb710ff9bc`; deployed JavaScript and CSS are byte-identical to this candidate build.
 
-## Repairs
+## What was verified
 
-1. Every browser claim now runs through `npm run verify:browser-claim`. That
-   command performs `npm ci`, builds the site, and then starts the selected
-   Playwright test. All seven former pre-install failures in
-   `.factory/claims.json` use this self-contained command.
-2. Azure Static Web Apps now uses its supported `/assets/*.{js,css}` route for
-   immutable generated JS/CSS. Vite emits all generated entry, chunk, and
-   imported assets under the content-addressed `assets/main-[hash]` prefix.
-   Stable public artwork, fonts, and the service worker retain revalidation;
-   `sw.js` explicitly remains `no-cache`.
-3. Regression coverage in `tests/site.test.js` asserts the seven exact claim
-   commands, the locked bootstrap script, Vite naming policy, and the Azure
-   cache route. The existing offline claim now also calls
-   `ServiceWorkerRegistration.update()` before the offline reload.
-4. The service worker cache now includes the 12-character build ID. A changed
-   deployment changes `sw.js`, installs a fresh cache, and removes the prior
-   cache on activation instead of retaining an old offline shell.
+- All 25 exact `.factory/claims.json` commands passed from the clean checkout, including the self-bootstrapping browser claims and Rust 1.85 MSRV.
+- `npm ci`, `npm test`, `npm run build`, `cargo fmt --check`, Clippy with warnings denied, and `cargo package --locked` passed.
+- A clean temporary consumer installed the packaged CLI and exercised public help and demo. Independent normal, HOLD, and invalid-input flows returned the documented exit codes and actionable output.
+- The live page passed cold first-read and one-click demo checks. The sample is isolated, persistent-bannered, keyboard-operable, and reloads offline after service-worker update.
+- Live demo request logging found only same-origin requests. CSP, security headers, and cache policy are present; hashed JavaScript is immutable and `sw.js` is no-cache.
+- Live Axe scans had zero serious/critical findings. Desktop/mobile, visible keyboard focus, reduced motion, and Lighthouse passed. Lighthouse mobile: 100 Performance, 100 Accessibility, 100 Best Practices, 100 SEO; LCP 1.7 s, CLS 0.026.
+- The optional Sociobot license endpoint rate-limited one invalid-token client after 13 accepted burst calls; call 14 returned 429 with `Retry-After: 4`.
 
-## Verification evidence
+## How to reproduce
 
-- Started with no `node_modules`; the exact
-  `npm run verify:browser-claim -- --grep @claim:one-click-demo` command
-  installed 21 locked packages, built, and passed.
-- Executed every one of the 25 exact `test` commands in
-  `.factory/claims.json` on the final tree: **25/25 PASS**. This includes all
-  seven repaired browser claims, Rust 1.85 MSRV, offline/update, local privacy,
-  Team licensing, checkout navigation, policy download, and version metadata.
-- `npm ci`: PASS, 21 packages installed, zero audit vulnerabilities.
-- `npm test`: PASS — 18 Rust integration tests, 7 Node contract tests, and 24
-  Playwright tests. The browser suite covers desktop and 390 px mobile,
-  keyboard focus/activation, 200% text reflow, reduced motion, Axe serious and
-  critical violations, local privacy, service-worker offline reload/update,
-  billing mocks, and route metadata.
-- `npm run build`: PASS. `dist/site/` contains 20.72 KB JavaScript (7.03 KB
-  gzip) and 11.17 KB CSS (3.40 KB gzip). The self-hosted font is 20,056 bytes
-  and the hero artwork is 94,064 bytes.
-- `cargo fmt --check`, `cargo clippy --all-targets --locked -- -D warnings`,
-  and `cargo package --locked --allow-dirty`: PASS. The package contains 28
-  files, 369.5 KiB unpacked and 205.9 KiB compressed.
-- A fresh `cargo install --path target/package/ios-review-gate-0.1.0 --locked
-  --root <temp>` consumer install passed `--version`, `demo --json`, `inspect`
-  on the shipped `.xcarchive`, and `check --json`, writing both metadata and a
-  PASS review packet.
-- `/opt/fleet/lib/verify-url.sh` against a production-build Vite preview:
-  PASS — title, `lang=en`, one h1, main landmark, image alt text, labeled
-  buttons, and no page or console errors.
-- The Azure Static Web Apps emulator served the final built
-  `assets/main-BAeHMhC9.js` and `assets/main-FbCzFwnk.css` with exactly
-  `Cache-Control: public, max-age=31536000, immutable`; `/sw.js` returned
-  exactly `Cache-Control: no-cache`.
-- Before the cache-version repair deployment, a persisted live browser profile
-  held exactly `ios-review-gate-v7`. After deployment it held only
-  `ios-review-gate-c483f078337c`, showed footer build `c483f078337c`, and
-  reloaded `/?demo=1` offline with its sample heading intact.
+```sh
+npm ci
+npm test
+npm run build
+cargo +1.85.0 test --all-targets --locked
+cargo fmt --check
+cargo clippy --all-targets --locked -- -D warnings
+cargo package --locked
+cargo run -- demo
+```
 
-## Deployment evidence
+See `.factory/verification-12.md` for complete evidence, claim commands, and live deployment checks.
 
-- `/opt/fleet/lib/deploy-static.sh ios-review-gate dist/site`: PASS — Azure
-  deployment `ea86fe14-54ae-4e95-9e5e-c649e99b63a3` succeeded and HTTPS was
-  available at `https://ios-review-gate.sociobot.in`.
-- Live byte identity: `index.html`, `404.html`, `sw.js`,
-  `assets/main--FRvwSeA.js`, and `assets/main-FbCzFwnk.css` exactly matched
-  the generated `dist/site/` files for build `c483f078337c`.
-- Live response policy: both emitted JS and CSS returned exactly
-  `Cache-Control: public, max-age=31536000, immutable`; `sw.js` returned
-  exactly `Cache-Control: no-cache`.
-- `/opt/fleet/lib/verify-url.sh https://ios-review-gate.sociobot.in`: PASS —
-  981 ms load, no browser/page errors, title, `lang=en`, one h1, main,
-  complete image alt text, and labeled buttons.
-- Live Playwright/Axe smoke: desktop `/`, demo, privacy, terms, and 404 plus
-  390 px home and demo had one h1/main, no horizontal overflow, and zero
-  serious or critical Axe violations. Keyboard Enter opened the sample and
-  focused its h1 at both widths. The expected main-document 404 network line
-  was the only exempt console entry.
+## Known gaps / next steps
 
-## Known gaps
-
-None.
+None found. Deployment and registry publishing remain factory responsibilities; do not publish the crate from this workspace.
