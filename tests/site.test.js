@@ -2,8 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 
-const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const routeMatches = (route, path) => new RegExp(`^${route.split('*').map(escapeRegex).join('.*')}$`).test(path);
+const immutableAssetRouteMatches = (route, path) => route === '/assets/*.{js,css}' && /^\/assets\/[^/]+\.(?:js|css)$/.test(path);
 
 test('site metadata and landmarks are declared', async () => {
   const html = await readFile('index.html', 'utf8');
@@ -68,15 +67,15 @@ test('hashed Vite entry assets receive immutable caching while stable public fil
   const immutable = host.routes.find(route => route.headers?.['Cache-Control'] === 'public, max-age=31536000, immutable');
 
   assert.ok(immutable, 'the static host needs an immutable hashed-asset route');
-  assert.equal(immutable.route, '/assets/main-*');
+  assert.equal(immutable.route, '/assets/*.{js,css}');
   assert.match(vite, /entryFileNames: 'assets\/main-\[hash\]\.js'/);
   assert.match(vite, /chunkFileNames: 'assets\/main-\[hash\]\.js'/);
   assert.match(vite, /assetFileNames: 'assets\/main-\[hash\]\[extname\]'/);
   for (const emittedHashedAsset of ['/assets/main-a1b2c3d4.js', '/assets/main-a1b2c3d4.css']) {
-    assert.equal(routeMatches(immutable.route, emittedHashedAsset), true, `${emittedHashedAsset} must match immutable caching`);
+    assert.equal(immutableAssetRouteMatches(immutable.route, emittedHashedAsset), true, `${emittedHashedAsset} must match immutable caching`);
   }
-  assert.equal(routeMatches(immutable.route, '/assets/release-blueprint.webp'), false, 'stable public artwork must remain revalidatable');
-  assert.equal(routeMatches(immutable.route, '/sw.js'), false, 'the service worker must retain its no-cache policy');
+  assert.equal(immutableAssetRouteMatches(immutable.route, '/assets/release-blueprint.webp'), false, 'stable public artwork must remain revalidatable');
+  assert.equal(immutableAssetRouteMatches(immutable.route, '/sw.js'), false, 'the service worker must retain its no-cache policy');
 });
 
 test('every repaired visitor promise is registered to an exact claim test', async () => {

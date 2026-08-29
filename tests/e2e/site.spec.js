@@ -106,6 +106,12 @@ test('dark mobile demo banner has readable controls and no serious axe findings'
 test('@claim:offline-shell caches only same-origin static files and reloads the demo offline', async ({ page, context }) => {
   await page.goto('/?demo=1', { waitUntil: 'networkidle' });
   await page.evaluate(() => navigator.serviceWorker.ready);
+  const activeWorker = await page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.ready;
+    await registration.update();
+    return registration.active?.scriptURL || null;
+  });
+  expect(activeWorker).toMatch(/\/sw\.js$/);
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await expect.poll(() => page.evaluate(async () => {
     const cache = await caches.open('ios-review-gate-v7');
