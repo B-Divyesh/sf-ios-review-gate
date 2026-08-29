@@ -32,7 +32,7 @@ test('factory contracts and static host configuration are valid JSON', async () 
     { route: '/terms', rewrite: '/index.html' },
   ]);
   assert.deepEqual(host.responseOverrides['404'], { rewrite: '/404.html', statusCode: 404 });
-  await stat('site/public/404.html');
+  await stat('404.html');
 });
 
 test('every repaired visitor promise is registered to an exact claim test', async () => {
@@ -49,6 +49,7 @@ test('every repaired visitor promise is registered to an exact claim test', asyn
     ['archive-inspection', 'Read version, build, bundle ID, and privacy use from an .xcarchive or .ipa.'],
     ['offline-shell', 'The demo works offline after one visit.'],
     ['license-metadata', 'The CLI uses the MIT License.'],
+    ['version-metadata', 'CLI v${VERSION} · build ${BUILD_ID}'],
   ];
 
   for (const [id, publicCopy] of required) {
@@ -61,6 +62,7 @@ test('every repaired visitor promise is registered to an exact claim test', asyn
   const cliPromises = [
     ['cli-exit-codes', 'Exit code `0` means the check passed.'],
     ['cli-json-schema', 'The JSON object contains `passed`, `summary`, `findings`, `queue`, and `packet_path`.'],
+    ['sample-screenshot-dimensions', 'The bundled `iphone-69` sample is 1320×2868 pixels.'],
   ];
   for (const [id, publicCopy] of cliPromises) {
     const claim = claims.find(item => item.id === id);

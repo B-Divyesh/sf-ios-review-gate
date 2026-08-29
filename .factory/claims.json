@@ -14,6 +14,13 @@
     "sandbox": "bundled sample with seeded metadata/privacy inconsistencies, invalid sibling and Team-added reason codes, an unknown App Store locale, truncated JPEG/PNG stubs, a decodable 1×1 JPEG, and an unknown device-set key"
   },
   {
+    "id": "sample-screenshot-dimensions",
+    "claim": "The bundled iphone-69 sample is exactly 1320×2868 pixels",
+    "where": "README screenshot guidance",
+    "test": "cargo test claim_sample_screenshot_dimensions_match_the_documented_fixture",
+    "sandbox": "decode the shipped JPEG and assert its exact width and height"
+  },
+  {
     "id": "markdown-packet",
     "claim": "Prints a dated Markdown review packet that names the rules version",
     "where": "landing, README",
@@ -141,10 +148,10 @@
   },
   {
     "id": "team-policy-download",
-    "claim": "A verified Team license enables a local policy download with the chosen queue limit",
+    "claim": "A verified Team license enables a local policy download with the chosen queue limit and Apple reason codes",
     "where": "paid tier, terms page",
     "test": "npm run build:site && npx playwright test --grep @claim:team-policy-download",
-    "sandbox": "fresh browser context with a cached recorded license verdict"
+    "sandbox": "fresh browser context with a cached recorded license verdict; choose queue and reason settings, inspect the YAML, then pass it to the real CLI"
   },
   {
     "id": "team-queue-history",
@@ -159,5 +166,12 @@
     "where": "terms page, README, package metadata",
     "test": "node --test --test-name-pattern='@claim:license-metadata' tests/site.test.js",
     "sandbox": "compare the LICENSE text, Cargo package license, README license section, and terms copy"
+  },
+  {
+    "id": "version-metadata",
+    "claim": "The site footer identifies the CLI version and deployed source build",
+    "where": "footer on every route, including 404",
+    "test": "npm run build && npx playwright test --grep @claim:version-metadata",
+    "sandbox": "compare Cargo and package versions with CLI --version, then compare the generated Git build id on the SPA and standalone 404"
   }
 ]

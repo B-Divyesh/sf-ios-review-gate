@@ -254,6 +254,14 @@ fn claim_release_completeness_catches_seeded_metadata_privacy_and_screenshot_err
 }
 
 #[test]
+fn claim_sample_screenshot_dimensions_match_the_documented_fixture() {
+    let dimensions =
+        image::image_dimensions("examples/sample/screenshots/en-US/iphone-69/home.jpg")
+            .expect("bundled screenshot must decode");
+    assert_eq!(dimensions, (1320, 2868));
+}
+
+#[test]
 fn invalid_identity_images_and_queue_durations_cannot_pass() {
     let (mut metadata, mut release) = sample();
     metadata.bundle_id.clear();

@@ -1,4 +1,4 @@
-# Copy audit — polish round 1
+# Copy audit — polish round 2
 
 Audited 29 August 2026. Counts treat a URL, path, flag, hyphenated term, or version as one word. Code blocks are excluded. No sentence exceeds 22 words. No banned plain-words term appears.
 
@@ -30,21 +30,22 @@ Audited 29 August 2026. Counts treat a URL, path, flag, hyphenated term, or vers
 | 22 | 8 | Verified Team licenses enable the local policy download. |
 | 23 | 8 | Team policies support queue histories beyond three submissions. |
 | 24 | 12 | Build a shared policy file for queue limits and approved reason codes. |
-| 25 | 3 | Have a license? |
-| 26 | 3 | Paste it here. |
-| 27 | 4 | Verified on this device. |
-| 28 | 3 | License not active. |
-| 29 | 8 | Check the token or use Buy Team license. |
-| 30 | 5 | Could not check the license. |
-| 31 | 5 | Connect once and try again. |
-| 32 | 5 | License removed from this browser. |
-| 33 | 3 | Team policy downloaded. |
-| 34 | 7 | Pass it to the CLI with --policy. |
-| 35 | 4 | License no longer active. |
-| 36 | 6 | Sociobot hosts checkout and license verification. |
-| 37 | 6 | For billing help, email billing@sociobot.in. |
-| 38 | 4 | See privacy and terms. |
-| 39 | 10 | Check an iOS release and print its Markdown review packet. |
+| 25 | 8 | Select the Apple reason codes your team permits. |
+| 26 | 3 | Have a license? |
+| 27 | 3 | Paste it here. |
+| 28 | 4 | Verified on this device. |
+| 29 | 3 | License not active. |
+| 30 | 8 | Check the token or use Buy Team license. |
+| 31 | 5 | Could not check the license. |
+| 32 | 5 | Connect once and try again. |
+| 33 | 5 | License removed from this browser. |
+| 34 | 3 | Team policy downloaded. |
+| 35 | 7 | Pass it to the CLI with --policy. |
+| 36 | 4 | License no longer active. |
+| 37 | 6 | Sociobot hosts checkout and license verification. |
+| 38 | 6 | For billing help, email billing@sociobot.in. |
+| 39 | 4 | See privacy and terms. |
+| 40 | 10 | Check an iOS release and print its Markdown review packet. |
 
 ## README sentences
 
@@ -110,7 +111,7 @@ Audited 29 August 2026. Counts treat a URL, path, flag, hyphenated term, or vers
 - Primary action: “Try it with sample data.”
 - Adjacent result: “Open a checked sample and its review packet.”
 - Three facts: local release files, offline demo, and $0 core checks.
-- Catalog: “Check an iOS archive against release metadata and print a Markdown review packet.” — 13 words, 80 characters.
+- Catalog: “Check an iOS archive and release plan, then print a Markdown review packet.” — 13 words, 73 characters.
 
 | Concept | One term |
 | --- | --- |

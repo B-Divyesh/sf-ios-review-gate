@@ -1,1 +1,1 @@
-Check an iOS archive against release metadata and print a Markdown review packet.
+Check an iOS archive and release plan, then print a Markdown review packet.

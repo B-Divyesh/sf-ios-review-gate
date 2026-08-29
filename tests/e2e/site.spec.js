@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
 test('@claim:one-click-demo opens a complete sample in one click', async ({ page }) => {
   await page.goto('/');
@@ -14,15 +16,34 @@ test('@claim:one-click-demo opens a complete sample in one click', async ({ page
 });
 
 test('@claim:browser-demo-local keeps real storage untouched and sends no cross-origin requests', async ({ page }) => {
-  const crossOrigin = [];
-  page.on('request', request => { if (new URL(request.url()).origin !== 'http://127.0.0.1:4173') crossOrigin.push(request.url()); });
+  let releaseVerification;
+  let markVerificationStarted;
+  const verificationStarted = new Promise(resolve => { markVerificationStarted = resolve; });
+  const verificationRelease = new Promise(resolve => { releaseVerification = resolve; });
+  await page.route('https://api.sociobot.in/api/v1/products/ios-review-gate/verify?license=real-license', async route => {
+    markVerificationStarted();
+    await verificationRelease;
+    await route.fulfill({ json: { valid: true, reason: 'ok', expires_at: null } }).catch(() => {});
+  });
+  const crossOriginAfterDemo = [];
+  let demoStarted = false;
+  page.on('request', request => {
+    if (demoStarted && new URL(request.url()).origin !== 'http://127.0.0.1:4173') crossOriginAfterDemo.push(request.url());
+  });
   await page.addInitScript(() => {
     localStorage.setItem('real:release', 'private-project');
     localStorage.setItem('sb_license:ios-review-gate', 'real-license');
     sessionStorage.setItem('real:draft', 'private-draft');
   });
-  await page.goto('/?demo=1');
+  await page.goto('/');
+  await verificationStarted;
+  const before = await page.evaluate(() => ({ local: { ...localStorage }, session: { ...sessionStorage } }));
+  demoStarted = true;
+  await page.getByRole('link', { name: 'Try it with sample data' }).click();
+  await expect(page).toHaveURL(/\?demo=1$/);
+  releaseVerification();
   await page.getByRole('button', { name: 'Reset demo' }).click();
+  await page.waitForTimeout(100);
   const storage = await page.evaluate(async () => ({
     local: { ...localStorage },
     session: { ...sessionStorage },
@@ -30,12 +51,12 @@ test('@claim:browser-demo-local keeps real storage untouched and sends no cross-
     databases: (await indexedDB.databases()).map(database => database.name),
     caches: (await caches.keys()).sort(),
   }));
-  expect(crossOrigin).toEqual([]);
-  expect(storage.local).toEqual({ 'real:release': 'private-project', 'sb_license:ios-review-gate': 'real-license' });
-  expect(storage.session).toEqual({ 'real:draft': 'private-draft' });
+  expect(crossOriginAfterDemo).toEqual([]);
+  expect(storage.local).toEqual(before.local);
+  expect(storage.session).toEqual(before.session);
   expect(storage.cookies).toBe('');
   expect(storage.databases).toEqual([]);
-  expect(storage.caches).toEqual(['ios-review-gate-v6']);
+  expect(storage.caches).toEqual(['ios-review-gate-v7']);
 });
 
 test('routes expose one h1, titles, keyboard focus, and no serious axe findings', async ({ page }) => {
@@ -87,13 +108,13 @@ test('@claim:offline-shell caches only same-origin static files and reloads the 
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await expect.poll(() => page.evaluate(async () => {
-    const cache = await caches.open('ios-review-gate-v6');
+    const cache = await caches.open('ios-review-gate-v7');
     const paths = (await cache.keys()).map(request => new URL(request.url).pathname);
-    return paths.some(path => /^\/assets\/index-.+\.js$/.test(path))
-      && paths.some(path => /^\/assets\/index-.+\.css$/.test(path));
+    return paths.some(path => /^\/assets\/(?:index|main)-.+\.js$/.test(path))
+      && paths.some(path => /^\/assets\/(?:index|main)-.+\.css$/.test(path));
   })).toBe(true);
   const cachedUrls = await page.evaluate(async () => {
-    const cache = await caches.open('ios-review-gate-v6');
+    const cache = await caches.open('ios-review-gate-v7');
     return (await cache.keys()).map(request => request.url).sort();
   });
   expect(cachedUrls.length).toBeGreaterThan(7);
@@ -314,6 +335,7 @@ test('checkout return stores, strips, and can remove a Team license', async ({ p
 });
 
 test('@claim:team-policy-download writes the licensed policy settings', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   await page.addInitScript(() => {
     localStorage.setItem('sb_license:ios-review-gate', 'test-token');
     localStorage.setItem('sb_license:ios-review-gate:verdict', JSON.stringify({ token: 'test-token', valid: true, checkedAt: Date.now() }));
@@ -321,6 +343,10 @@ test('@claim:team-policy-download writes the licensed policy settings', async ({
   await page.goto('/');
   await page.getByLabel('Policy name').fill('Mobile release');
   await page.getByLabel('Active submission limit').fill('7');
+  await expect(page.getByRole('group', { name: 'Approved reason codes' })).toBeVisible();
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations.filter(v => ['serious', 'critical'].includes(v.impact))).toEqual([]);
+  await page.getByLabel('SystemBootTime 35F9.1').uncheck();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Download Team policy' }).click();
   const download = await downloadPromise;
@@ -328,6 +354,31 @@ test('@claim:team-policy-download writes the licensed policy settings', async ({
   const content = await (await import('node:fs/promises')).readFile(await download.path(), 'utf8');
   expect(content).toContain('name: "Mobile release"');
   expect(content).toContain('max_active_submissions: 7');
-  expect(content).toContain('approved_reason_codes: {}');
+  expect(content).toContain('approved_reason_codes:');
+  expect(content).toContain('UserDefaults:\n    - CA92.1');
+  expect(content).toContain('DiskSpace:\n    - E174.1');
+  expect(content).not.toContain('SystemBootTime:');
   expect(content).not.toContain('additional_reason_codes');
+  const cliOutput = execFileSync('cargo', [
+    'run', '--quiet', '--locked', '--', 'check',
+    '--metadata', 'examples/sample/metadata.json',
+    '--release', 'examples/sample/release.yaml',
+    '--policy', await download.path(), '--json',
+  ], { encoding: 'utf8' });
+  const result = JSON.parse(cliOutput);
+  expect(result.passed).toBe(true);
+  expect(result.policy).toBe('Mobile release');
+});
+
+test('@claim:version-metadata shows the Cargo and CLI version with the generated build id', async ({ page }) => {
+  const cargo = readFileSync('Cargo.toml', 'utf8');
+  const packageJson = JSON.parse(readFileSync('package.json', 'utf8'));
+  const version = cargo.match(/^version = "([^"]+)"$/m)?.[1];
+  expect(version).toBe(packageJson.version);
+  expect(execFileSync('cargo', ['run', '--quiet', '--locked', '--', '--version'], { encoding: 'utf8' }).trim()).toBe(`ios-review-gate ${version}`);
+  const buildId = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim().slice(0, 12);
+  for (const path of ['/', '/demo', '/privacy', '/terms', '/404.html']) {
+    await page.goto(path);
+    await expect(page.locator('footer .build')).toHaveText(`CLI v${version} · build ${buildId}`);
+  }
 });
