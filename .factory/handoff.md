@@ -4,7 +4,7 @@
 
 The two release blockers from independent verification 11 of candidate
 `62ff8d7ceb460f87fd38efa8c8f8a0874050b907` are repaired. The repair commits
-are `1234074` and `8be38ab`. The product remains a local Rust CLI with its
+are `1234074`, `8be38ab`, and `3d036cc`. The product remains a local Rust CLI with its
 static Vite documentation site; no product behavior, pricing, or researched
 scope changed.
 
@@ -23,6 +23,9 @@ scope changed.
    commands, the locked bootstrap script, Vite naming policy, and the Azure
    cache route. The existing offline claim now also calls
    `ServiceWorkerRegistration.update()` before the offline reload.
+4. The service worker cache now includes the 12-character build ID. A changed
+   deployment changes `sw.js`, installs a fresh cache, and removes the prior
+   cache on activation instead of retaining an old offline shell.
 
 ## Verification evidence
 
@@ -44,7 +47,7 @@ scope changed.
   and the hero artwork is 94,064 bytes.
 - `cargo fmt --check`, `cargo clippy --all-targets --locked -- -D warnings`,
   and `cargo package --locked --allow-dirty`: PASS. The package contains 28
-  files, 368.6 KiB unpacked and 205.7 KiB compressed.
+  files, 369.5 KiB unpacked and 205.9 KiB compressed.
 - A fresh `cargo install --path target/package/ios-review-gate-0.1.0 --locked
   --root <temp>` consumer install passed `--version`, `demo --json`, `inspect`
   on the shipped `.xcarchive`, and `check --json`, writing both metadata and a
@@ -56,6 +59,9 @@ scope changed.
   `assets/main-BAeHMhC9.js` and `assets/main-FbCzFwnk.css` with exactly
   `Cache-Control: public, max-age=31536000, immutable`; `/sw.js` returned
   exactly `Cache-Control: no-cache`.
+- Before the cache-version repair deployment, a persisted live browser profile
+  held exactly `ios-review-gate-v7`; the post-deploy check uses that same
+  profile to prove migration to the build-versioned cache.
 
 ## Deploy and post-deploy check
 
@@ -72,5 +78,4 @@ After deploy, verify `https://ios-review-gate.sociobot.in` with
 
 ## Known gaps
 
-None. The sole temporary limitation is that live checks must be performed
-after the static deployment completes.
+None.
