@@ -1,5 +1,26 @@
 # Handoff — iOS Review Gate 0.1.0
 
+## Adversarial first-read review 1 — FAIL (2026-08-29 UTC)
+
+Candidate `bfde49f0ead27b2140f31db3b7b1ba4343324e8e` and the matching live
+deployment were reviewed without product-code changes. The first-read gate,
+one-click demo, sandbox isolation/reset, offline reload, all 20 registered
+claim commands, aggregate tests/build, Rust 1.85, rustfmt, strict Clippy,
+route/link crawl, live accessibility matrix, checkout, rate limiting, and all
+recorded historical regressions passed.
+
+Release status is still **FAIL** under the required zero-finding rule. The
+review records 22 findings: eleven public claims are absent or only partly
+represented in `.factory/claims.json`; direct archive/IPA import is the
+obvious missing end-to-end step; the desktop first viewport hides all three
+plain facts; the standalone 404 lacks shared metadata/footer content; and the
+remaining copy includes one 29-word sentence, decorative labels, inconsistent
+output terms, vague actions, jargon, and subjective adjectives.
+
+Full evidence, every landing/README sentence with its word count, exact
+rewrites, the 20-claim result table, and the earlier-finding regression audit
+are in `.factory/review-1.md`.
+
 ## Independent verification 9 — PASS (2026-08-29 UTC)
 
 **Release status: PASS.** Candidate
