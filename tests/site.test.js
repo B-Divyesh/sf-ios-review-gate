@@ -38,6 +38,7 @@ test('factory contracts and static host configuration are valid JSON', async () 
 test('every repaired visitor promise is registered to an exact claim test', async () => {
   const claims = JSON.parse(await readFile('.factory/claims.json', 'utf8'));
   const source = await readFile('site/src/main.js', 'utf8');
+  const readme = await readFile('README.md', 'utf8');
   const required = [
     ['core-without-team-license', 'Checks and packets need no Team license.'],
     ['same-checker-demo', 'The website sample and command use the same bundled checker.'],
@@ -52,5 +53,16 @@ test('every repaired visitor promise is registered to an exact claim test', asyn
     assert.ok(claim, `missing registered claim: ${id}`);
     assert.ok(claim.test, `missing regression command for: ${id}`);
     assert.ok(source.includes(publicCopy), `public copy is not covered: ${publicCopy}`);
+  }
+
+  const cliPromises = [
+    ['cli-exit-codes', 'Exit code `0` means the gate passed.'],
+    ['cli-json-schema', 'The JSON object contains `passed`, `summary`, `findings`, `queue`, and `packet_path`.'],
+  ];
+  for (const [id, publicCopy] of cliPromises) {
+    const claim = claims.find(item => item.id === id);
+    assert.ok(claim, `missing registered claim: ${id}`);
+    assert.ok(claim.test, `missing regression command for: ${id}`);
+    assert.ok(readme.includes(publicCopy), `README promise is not covered: ${publicCopy}`);
   }
 });

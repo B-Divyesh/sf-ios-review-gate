@@ -28,7 +28,7 @@ test('@claim:browser-demo-local saves no personal release data and sends no cros
   expect(storage.session).toEqual([]);
   expect(storage.cookies).toBe('');
   expect(storage.databases).toEqual([]);
-  expect(storage.caches).toEqual(['ios-review-gate-v4']);
+  expect(storage.caches).toEqual(['ios-review-gate-v5']);
 });
 
 test('routes expose one h1, titles, keyboard focus, and no serious axe findings', async ({ page }) => {
@@ -80,7 +80,7 @@ test('warmed demo reloads offline with its cached app shell', async ({ page, con
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await expect.poll(() => page.evaluate(async () => {
-    const cache = await caches.open('ios-review-gate-v4');
+    const cache = await caches.open('ios-review-gate-v5');
     const paths = (await cache.keys()).map(request => new URL(request.url).pathname);
     return paths.some(path => /^\/assets\/index-.+\.js$/.test(path))
       && paths.some(path => /^\/assets\/index-.+\.css$/.test(path));
@@ -107,6 +107,15 @@ test('mobile layout keeps the first action visible and avoids horizontal scroll'
   await expect(page.getByRole('link', { name: 'Try it with sample data' })).toBeVisible();
   const widths = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
   expect(widths.scroll).toBe(widths.client);
+});
+
+test('mobile wordmark includes its visible RG label in its accessible name', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  const wordmark = page.locator('.wordmark').first();
+  await expect(wordmark.locator('.mark')).toBeVisible();
+  await expect(wordmark.locator('span:last-child')).toBeHidden();
+  await expect(wordmark).toHaveAccessibleName('RG — iOS Review Gate home');
 });
 
 test('mobile default text gives every interactive control a 44px target on every route', async ({ page }) => {
@@ -235,6 +244,25 @@ test('an inactive Team license keeps the hosted checkout available', async ({ pa
   await page.getByRole('button', { name: 'Verify Team license' }).click();
   await expect(page.getByText('License not active. Check the token or use Buy Team license.')).toBeVisible();
   await expect(page.getByRole('link', { name: /Buy Team license/ })).toHaveAttribute('href', 'https://api.sociobot.in/api/v1/products/ios-review-gate/checkout');
+});
+
+test('a malformed cached license verdict is discarded and a new license can recover', async ({ page }) => {
+  const errors = [];
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('pageerror', error => errors.push(error.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('sb_license:ios-review-gate', 'corrupt-token');
+    localStorage.setItem('sb_license:ios-review-gate:verdict', '{not JSON');
+  });
+  await page.route('https://api.sociobot.in/api/v1/products/ios-review-gate/verify?license=corrupt-token', route => route.fulfill({ status: 204 }));
+  await page.route('https://api.sociobot.in/api/v1/products/ios-review-gate/verify?license=recovered-token', route => route.fulfill({ json: { valid: true, reason: 'ok', expires_at: null } }));
+  await page.goto('/');
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('sb_license:ios-review-gate:verdict'))).toBeNull();
+  await page.getByLabel('Have a license? Paste it here.').fill('recovered-token');
+  await page.getByRole('button', { name: 'Verify Team license' }).click();
+  await expect(page.getByText('Team license active')).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('sb_license:ios-review-gate'))).toBe('recovered-token');
+  expect(errors).toEqual([]);
 });
 
 test('checkout return stores, strips, and can remove a Team license', async ({ page }) => {

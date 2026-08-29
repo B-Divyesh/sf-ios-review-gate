@@ -1,4 +1,5 @@
 use assert_cmd::Command;
+use image::{DynamicImage, ImageFormat};
 use ios_review_gate::{
     ArtifactMetadata, Release, Severity, TeamPolicy, check, check_with_policy, run_files,
 };
@@ -70,11 +71,14 @@ fn claim_release_completeness_catches_seeded_metadata_privacy_and_screenshot_err
         .unwrap()
         .get_mut("iphone-69")
         .unwrap()
-        .splice(.., [
-            "missing.bmp".into(),
-            "truncated.jpg".into(),
-            "truncated.png".into(),
-        ]);
+        .splice(
+            ..,
+            [
+                "missing.bmp".into(),
+                "truncated.jpg".into(),
+                "truncated.png".into(),
+            ],
+        );
     fs::write(temp.path().join("truncated.jpg"), [0xff, 0xd8, 0xff, 0xd9]).unwrap();
     fs::write(
         temp.path().join("truncated.png"),
@@ -119,6 +123,63 @@ fn claim_release_completeness_catches_seeded_metadata_privacy_and_screenshot_err
         );
     }
     assert!(!report.passed, "truncated screenshots must never PASS");
+
+    let (metadata, mut one_pixel_release) = sample();
+    let one_pixel = temp.path().join("one-by-one.jpg");
+    DynamicImage::new_rgb8(1, 1)
+        .save_with_format(&one_pixel, ImageFormat::Jpeg)
+        .unwrap();
+    one_pixel_release
+        .screenshots
+        .get_mut("en-US")
+        .unwrap()
+        .get_mut("iphone-69")
+        .unwrap()[0] = "one-by-one.jpg".into();
+    let one_pixel_report = check(&metadata, &one_pixel_release, temp.path());
+    assert!(
+        one_pixel_report
+            .findings
+            .iter()
+            .any(|item| item.code == "screenshots.dimensions" && item.message.contains("1×1")),
+        "a decodable 1×1 JPEG must not be accepted as an iPhone screenshot"
+    );
+    assert!(
+        !one_pixel_report
+            .findings
+            .iter()
+            .any(|item| item.code == "screenshots.invalid_image"),
+        "the 1×1 fixture proves dimension validation, not decode validation"
+    );
+    assert!(!one_pixel_report.passed, "a 1×1 screenshot must never PASS");
+
+    let (metadata, mut unknown_device_release) = sample();
+    fs::write(
+        temp.path().join("valid-screenshot.jpg"),
+        include_bytes!("../examples/sample/screenshots/en-US/iphone-69/home.jpg"),
+    )
+    .unwrap();
+    let device_sets = unknown_device_release.screenshots.get_mut("en-US").unwrap();
+    device_sets.remove("iphone-69");
+    device_sets.insert("not-a-device".into(), vec!["valid-screenshot.jpg".into()]);
+    let unknown_device_report = check(&metadata, &unknown_device_release, temp.path());
+    assert!(
+        unknown_device_report
+            .findings
+            .iter()
+            .any(|item| item.code == "screenshots.device_unknown"),
+        "an unknown device-set key must be rejected"
+    );
+    assert!(
+        !unknown_device_report
+            .findings
+            .iter()
+            .any(|item| item.code == "screenshots.dimensions"),
+        "the known-good image keeps this fixture focused on the device-set key"
+    );
+    assert!(
+        !unknown_device_report.passed,
+        "an unknown screenshot device set must never PASS"
+    );
 }
 
 #[test]
@@ -471,47 +532,67 @@ fn claim_actionable_mismatch_error_names_values_and_fix() {
 }
 
 #[test]
-fn invalid_input_has_actionable_error_and_exit_one() {
+fn claim_cli_exit_codes() {
+    let temp = tempfile::tempdir().unwrap();
+    let (metadata, release, _) = write_sample_workspace(temp.path());
     Command::cargo_bin("ios-review-gate")
         .unwrap()
-        .args([
-            "check",
-            "--metadata",
-            "nowhere.json",
-            "--release",
-            "release.yaml",
-        ])
+        .arg("check")
+        .arg("--metadata")
+        .arg(&metadata)
+        .arg("--release")
+        .arg(&release)
+        .assert()
+        .success();
+
+    fs::write(
+        &metadata,
+        include_str!("../examples/sample/metadata.json").replace("\"108\"", "\"999\""),
+    )
+    .unwrap();
+    Command::cargo_bin("ios-review-gate")
+        .unwrap()
+        .arg("check")
+        .arg("--metadata")
+        .arg(&metadata)
+        .arg("--release")
+        .arg(&release)
+        .assert()
+        .code(2);
+
+    Command::cargo_bin("ios-review-gate")
+        .unwrap()
+        .arg("check")
+        .arg("--metadata")
+        .arg(temp.path().join("nowhere.json"))
+        .arg("--release")
+        .arg(&release)
         .assert()
         .code(1)
         .stderr(predicates::str::contains("Fix the path or file contents"));
 }
 
 #[test]
-fn failed_gate_exits_two_and_json_is_parseable() {
+fn claim_cli_json_schema() {
     let temp = tempfile::tempdir().unwrap();
-    let metadata = temp.path().join("metadata.json");
-    let release = temp.path().join("release.yaml");
-    fs::write(
-        &metadata,
-        include_str!("../examples/sample/metadata.json").replace("\"108\"", "\"999\""),
-    )
-    .unwrap();
-    fs::write(&release, include_str!("../examples/sample/release.yaml")).unwrap();
+    let (metadata, release, _) = write_sample_workspace(temp.path());
     let output = Command::cargo_bin("ios-review-gate")
         .unwrap()
-        .args([
-            "check",
-            "--metadata",
-            metadata.to_str().unwrap(),
-            "--release",
-            release.to_str().unwrap(),
-            "--json",
-        ])
+        .arg("check")
+        .arg("--metadata")
+        .arg(&metadata)
+        .arg("--release")
+        .arg(&release)
+        .arg("--json")
         .assert()
-        .code(2)
+        .success()
         .get_output()
         .stdout
         .clone();
     let value: serde_json::Value = serde_json::from_slice(&output).unwrap();
-    assert_eq!(value["passed"], false);
+    assert!(value["passed"].is_boolean());
+    assert!(value["summary"].is_object());
+    assert!(value["findings"].is_array());
+    assert!(value["queue"].is_object());
+    assert!(value["packet_path"].is_null());
 }

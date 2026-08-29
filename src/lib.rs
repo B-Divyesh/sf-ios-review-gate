@@ -1,5 +1,5 @@
 use chrono::{Days, NaiveDate, Utc};
-use image::ImageFormat;
+use image::{GenericImageView, ImageFormat};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -14,6 +14,7 @@ struct RuleSet {
     id: String,
     localized_field_limits: BTreeMap<String, usize>,
     screenshots_per_set: ScreenshotLimits,
+    screenshot_device_sets: BTreeMap<String, ScreenshotDeviceSet>,
     required_reason_apis: BTreeMap<String, Vec<String>>,
 }
 
@@ -21,6 +22,19 @@ struct RuleSet {
 struct ScreenshotLimits {
     minimum: usize,
     maximum: usize,
+}
+
+#[derive(Debug, Deserialize)]
+struct ScreenshotDeviceSet {
+    display: String,
+    sizes: Vec<ScreenshotSize>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ScreenshotSize {
+    orientation: String,
+    width: u32,
+    height: u32,
 }
 
 fn official_rules() -> RuleSet {
@@ -231,19 +245,28 @@ fn checked_queue_date(
     Some(date)
 }
 
-fn is_decodable_screenshot(path: &Path, extension: &str) -> bool {
-    let Ok(bytes) = fs::read(path) else {
-        return false;
-    };
+fn screenshot_dimensions(path: &Path, extension: &str) -> Option<(u32, u32)> {
+    let bytes = fs::read(path).ok()?;
     let format = match extension {
         "png" => ImageFormat::Png,
         "jpg" | "jpeg" => ImageFormat::Jpeg,
-        _ => return false,
+        _ => return None,
     };
 
     // Fully decode the declared image format. This validates the stream rather
     // than accepting a filename or a handful of magic bytes as a screenshot.
-    image::load_from_memory_with_format(&bytes, format).is_ok()
+    image::load_from_memory_with_format(&bytes, format)
+        .ok()
+        .map(|image| image.dimensions())
+}
+
+fn accepted_screenshot_sizes(device: &ScreenshotDeviceSet) -> String {
+    device
+        .sizes
+        .iter()
+        .map(|size| format!("{} {}×{}", size.orientation, size.width, size.height))
+        .collect::<Vec<_>>()
+        .join(", ")
 }
 
 pub fn check(metadata: &ArtifactMetadata, release: &Release, release_dir: &Path) -> GateReport {
@@ -466,6 +489,26 @@ pub fn check_with_policy(
             )),
             Some(devices) => {
                 for (device, paths) in devices {
+                    let device_rule = rules.screenshot_device_sets.get(device);
+                    if device_rule.is_none() {
+                        findings.push(finding(
+                            "screenshots.device_unknown",
+                            Severity::Error,
+                            format!(
+                                "{} / {} is not a device set in {}.",
+                                locale, device, RULESET
+                            ),
+                            format!(
+                                "Use one of these device sets: {}.",
+                                rules
+                                    .screenshot_device_sets
+                                    .keys()
+                                    .map(String::as_str)
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            ),
+                        ));
+                    }
                     if paths.len() < rules.screenshots_per_set.minimum {
                         findings.push(finding(
                             "screenshots.set_empty",
@@ -512,7 +555,32 @@ pub fn check_with_policy(
                                 format!("{} does not exist.", raw),
                                 "Fix the path or add the screenshot file.",
                             ));
-                        } else if !is_decodable_screenshot(&path, &ext) {
+                        } else if let Some((width, height)) = screenshot_dimensions(&path, &ext) {
+                            if let Some(device_rule) = device_rule {
+                                let accepted = device_rule
+                                    .sizes
+                                    .iter()
+                                    .any(|size| size.width == width && size.height == height);
+                                if !accepted {
+                                    findings.push(finding(
+                                        "screenshots.dimensions",
+                                        Severity::Error,
+                                        format!(
+                                            "{} is {}×{}; {} accepts {}.",
+                                            raw,
+                                            width,
+                                            height,
+                                            device_rule.display,
+                                            accepted_screenshot_sizes(device_rule)
+                                        ),
+                                        format!(
+                                            "Export this screenshot at one accepted {} portrait or landscape size.",
+                                            device_rule.display
+                                        ),
+                                    ));
+                                }
+                            }
+                        } else {
                             findings.push(finding(
                                 "screenshots.invalid_image",
                                 Severity::Error,

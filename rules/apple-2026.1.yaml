@@ -10,6 +10,100 @@ localized_field_limits:
 screenshots_per_set:
   minimum: 1
   maximum: 10
+screenshot_device_sets:
+  iphone-69:
+    display: iPhone 6.9-inch
+    sizes:
+      - { orientation: portrait, width: 1260, height: 2736 }
+      - { orientation: landscape, width: 2736, height: 1260 }
+      - { orientation: portrait, width: 1290, height: 2796 }
+      - { orientation: landscape, width: 2796, height: 1290 }
+      - { orientation: portrait, width: 1320, height: 2868 }
+      - { orientation: landscape, width: 2868, height: 1320 }
+  iphone-65:
+    display: iPhone 6.5-inch
+    sizes:
+      - { orientation: portrait, width: 1284, height: 2778 }
+      - { orientation: landscape, width: 2778, height: 1284 }
+      - { orientation: portrait, width: 1242, height: 2688 }
+      - { orientation: landscape, width: 2688, height: 1242 }
+  iphone-63:
+    display: iPhone 6.3-inch
+    sizes:
+      - { orientation: portrait, width: 1179, height: 2556 }
+      - { orientation: landscape, width: 2556, height: 1179 }
+      - { orientation: portrait, width: 1206, height: 2622 }
+      - { orientation: landscape, width: 2622, height: 1206 }
+  iphone-61:
+    display: iPhone 6.1-inch
+    sizes:
+      - { orientation: portrait, width: 1170, height: 2532 }
+      - { orientation: landscape, width: 2532, height: 1170 }
+      - { orientation: portrait, width: 1125, height: 2436 }
+      - { orientation: landscape, width: 2436, height: 1125 }
+      - { orientation: portrait, width: 1080, height: 2340 }
+      - { orientation: landscape, width: 2340, height: 1080 }
+  iphone-55:
+    display: iPhone 5.5-inch
+    sizes:
+      - { orientation: portrait, width: 1242, height: 2208 }
+      - { orientation: landscape, width: 2208, height: 1242 }
+  iphone-47:
+    display: iPhone 4.7-inch
+    sizes:
+      - { orientation: portrait, width: 750, height: 1334 }
+      - { orientation: landscape, width: 1334, height: 750 }
+  iphone-40:
+    display: iPhone 4-inch
+    sizes:
+      - { orientation: portrait, width: 640, height: 1096 }
+      - { orientation: portrait, width: 640, height: 1136 }
+      - { orientation: landscape, width: 1136, height: 600 }
+      - { orientation: landscape, width: 1136, height: 640 }
+  iphone-35:
+    display: iPhone 3.5-inch
+    sizes:
+      - { orientation: portrait, width: 640, height: 920 }
+      - { orientation: portrait, width: 640, height: 960 }
+      - { orientation: landscape, width: 960, height: 600 }
+      - { orientation: landscape, width: 960, height: 640 }
+  ipad-13:
+    display: iPad 13-inch
+    sizes:
+      - { orientation: portrait, width: 2064, height: 2752 }
+      - { orientation: landscape, width: 2752, height: 2064 }
+      - { orientation: portrait, width: 2048, height: 2732 }
+      - { orientation: landscape, width: 2732, height: 2048 }
+  ipad-129:
+    display: iPad 12.9-inch
+    sizes:
+      - { orientation: portrait, width: 2048, height: 2732 }
+      - { orientation: landscape, width: 2732, height: 2048 }
+  ipad-11:
+    display: iPad 11-inch
+    sizes:
+      - { orientation: portrait, width: 1488, height: 2266 }
+      - { orientation: landscape, width: 2266, height: 1488 }
+      - { orientation: portrait, width: 1668, height: 2420 }
+      - { orientation: landscape, width: 2420, height: 1668 }
+      - { orientation: portrait, width: 1668, height: 2388 }
+      - { orientation: landscape, width: 2388, height: 1668 }
+  ipad-105:
+    display: iPad 10.5-inch
+    sizes:
+      - { orientation: portrait, width: 1668, height: 2224 }
+      - { orientation: landscape, width: 2224, height: 1668 }
+  ipad-standard:
+    display: iPad standard display
+    sizes:
+      - { orientation: portrait, width: 1536, height: 2008 }
+      - { orientation: portrait, width: 1536, height: 2048 }
+      - { orientation: landscape, width: 2048, height: 1496 }
+      - { orientation: landscape, width: 2048, height: 1536 }
+      - { orientation: portrait, width: 768, height: 1004 }
+      - { orientation: portrait, width: 768, height: 1024 }
+      - { orientation: landscape, width: 1024, height: 748 }
+      - { orientation: landscape, width: 1024, height: 768 }
 required_reason_apis:
   DiskSpace: [E174.1]
   FileTimestamp: [C617.1]

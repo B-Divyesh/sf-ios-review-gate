@@ -8,10 +8,10 @@
   },
   {
     "id": "release-completeness",
-    "claim": "Checks localized metadata, decodable PNG/JPEG screenshots, privacy declarations, and reason codes",
+    "claim": "Checks localized metadata, accepted App Store screenshot device sets and pixel sizes, privacy declarations, and reason codes",
     "where": "landing, README",
     "test": "cargo test claim_release_completeness",
-    "sandbox": "bundled sample with seeded metadata/privacy inconsistencies plus four-byte JPEG and eight-byte PNG signature stubs"
+    "sandbox": "bundled sample with seeded metadata/privacy inconsistencies, truncated JPEG/PNG stubs, a decodable 1×1 JPEG, and an unknown device-set key"
   },
   {
     "id": "markdown-packet",
@@ -75,6 +75,20 @@
     "where": "landing privacy section, README, privacy page",
     "test": "cargo test claim_cli_local",
     "sandbox": "compiled CLI source and dependency manifest checked for network client markers"
+  },
+  {
+    "id": "cli-exit-codes",
+    "claim": "Uses exit code 0 for PASS, 2 for HOLD, and 1 for invalid input",
+    "where": "README check a release",
+    "test": "cargo test claim_cli_exit_codes",
+    "sandbox": "fresh CLI processes with a bundled passing sample, a seeded mismatch, and a missing input file"
+  },
+  {
+    "id": "cli-json-schema",
+    "claim": "JSON output contains passed, summary, findings, queue, and packet_path",
+    "where": "README check a release",
+    "test": "cargo test claim_cli_json_schema",
+    "sandbox": "fresh CLI process with bundled sample inputs; parse JSON and assert every documented field"
   },
   {
     "id": "one-click-demo",

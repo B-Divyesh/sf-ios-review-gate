@@ -16,7 +16,7 @@ const terminal = `<figure class="terminal-sheet" aria-labelledby="terminal-capti
 </figure>`;
 
 const header = () => `<header class="site-header"><nav aria-label="Main navigation">
-  <a class="wordmark" href="/" data-link aria-label="iOS Review Gate home"><span aria-hidden="true" class="mark">RG</span><span>iOS Review Gate</span></a>
+  <a class="wordmark" href="/" data-link aria-label="RG — iOS Review Gate home"><span aria-hidden="true" class="mark">RG</span><span>iOS Review Gate</span></a>
   <div class="nav-links"><a href="/demo" data-link>Demo</a><a href="/#install">Install</a><a href="/privacy" data-link>Privacy</a></div>
 </nav></header>`;
 
@@ -76,6 +76,26 @@ function escapeHtml(value) {
   const node = document.createElement('span'); node.textContent = value; return node.innerHTML;
 }
 
+function cachedLicenseVerdict() {
+  const raw = localStorage.getItem(VERDICT_KEY);
+  if (!raw) return null;
+  try {
+    const cached = JSON.parse(raw);
+    if (
+      cached
+      && typeof cached === 'object'
+      && typeof cached.token === 'string'
+      && typeof cached.valid === 'boolean'
+      && Number.isFinite(cached.checkedAt)
+      && cached.checkedAt >= 0
+    ) return cached;
+  } catch {
+    // A browser extension, an older build, or manual storage editing can leave invalid JSON.
+  }
+  localStorage.removeItem(VERDICT_KEY);
+  return null;
+}
+
 const routes = {
   '/': { title: 'iOS Review Gate — check a release before review', description: 'Check iOS release metadata, screenshots, privacy answers, and queue timing. Print a local review packet before submission.', render: landing },
   '/demo': { title: 'Demo — iOS Review Gate', description: 'Inspect a complete sample iOS release and the Markdown packet produced by the local gate.', render: demo },
@@ -117,7 +137,7 @@ function navigate(event) {
 window.addEventListener('popstate', () => { render(true); initializeLicense(); });
 
 async function verifyLicense(token) {
-  const cached = JSON.parse(localStorage.getItem(VERDICT_KEY) || 'null');
+  const cached = cachedLicenseVerdict();
   if (cached?.token === token && Date.now() - cached.checkedAt < 86400000) return cached.valid;
   try {
     const response = await fetch(`${API}/products/${PRODUCT}/verify?license=${encodeURIComponent(token)}`);
@@ -178,7 +198,7 @@ async function initializeLicense() {
   if (received) { localStorage.setItem(LICENSE_KEY, received); history.replaceState({}, '', location.pathname); }
   const token = received || localStorage.getItem(LICENSE_KEY);
   if (!token) return;
-  const cached = JSON.parse(localStorage.getItem(VERDICT_KEY) || 'null');
+  const cached = cachedLicenseVerdict();
   licenseActive = cached?.token === token && cached.valid === true;
   if (licenseActive) renderPaidPanel();
   const valid = await verifyLicense(token);
