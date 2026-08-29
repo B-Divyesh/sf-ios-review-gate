@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
@@ -13,8 +13,21 @@ const buildId = (process.env.FACTORY_BUILD_ID
   .trim()
   .slice(0, 12);
 
+const versionServiceWorker = () => ({
+  name: 'version-service-worker-cache',
+  closeBundle() {
+    const serviceWorkerPath = resolve('dist/site/sw.js');
+    const serviceWorker = readFileSync(serviceWorkerPath, 'utf8');
+    if (!serviceWorker.includes('__BUILD_ID__')) {
+      throw new Error('sw.js is missing its cache-version placeholder');
+    }
+    writeFileSync(serviceWorkerPath, serviceWorker.replaceAll('__BUILD_ID__', buildId));
+  },
+});
+
 export default defineConfig({
   publicDir: 'site/public',
+  plugins: [versionServiceWorker()],
   define: {
     __CLI_VERSION__: JSON.stringify(cliVersion),
     __BUILD_ID__: JSON.stringify(buildId),

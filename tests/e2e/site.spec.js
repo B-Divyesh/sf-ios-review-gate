@@ -56,7 +56,8 @@ test('@claim:browser-demo-local keeps real storage untouched and sends no cross-
   expect(storage.session).toEqual(before.session);
   expect(storage.cookies).toBe('');
   expect(storage.databases).toEqual([]);
-  expect(storage.caches).toEqual(['ios-review-gate-v7']);
+  expect(storage.caches).toHaveLength(1);
+  expect(storage.caches[0]).toMatch(/^ios-review-gate-[a-f0-9]{12}$/);
 });
 
 test('routes expose one h1, titles, keyboard focus, and no serious axe findings', async ({ page }) => {
@@ -114,13 +115,16 @@ test('@claim:offline-shell caches only same-origin static files and reloads the 
   expect(activeWorker).toMatch(/\/sw\.js$/);
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await expect.poll(() => page.evaluate(async () => {
-    const cache = await caches.open('ios-review-gate-v7');
+    const cacheName = (await caches.keys()).find(name => /^ios-review-gate-[a-f0-9]{12}$/.test(name));
+    if (!cacheName) return false;
+    const cache = await caches.open(cacheName);
     const paths = (await cache.keys()).map(request => new URL(request.url).pathname);
     return paths.some(path => /^\/assets\/(?:index|main)-.+\.js$/.test(path))
       && paths.some(path => /^\/assets\/(?:index|main)-.+\.css$/.test(path));
   })).toBe(true);
   const cachedUrls = await page.evaluate(async () => {
-    const cache = await caches.open('ios-review-gate-v7');
+    const cacheName = (await caches.keys()).find(name => /^ios-review-gate-[a-f0-9]{12}$/.test(name));
+    const cache = await caches.open(cacheName);
     return (await cache.keys()).map(request => request.url).sort();
   });
   expect(cachedUrls.length).toBeGreaterThan(7);

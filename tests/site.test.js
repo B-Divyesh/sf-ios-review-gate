@@ -64,6 +64,7 @@ test('browser claim commands install their locked tooling before using it', asyn
 test('hashed Vite entry assets receive immutable caching while stable public files do not', async () => {
   const host = JSON.parse(await readFile('site/public/staticwebapp.config.json', 'utf8'));
   const vite = await readFile('vite.config.js', 'utf8');
+  const serviceWorker = await readFile('site/public/sw.js', 'utf8');
   const immutable = host.routes.find(route => route.headers?.['Cache-Control'] === 'public, max-age=31536000, immutable');
 
   assert.ok(immutable, 'the static host needs an immutable hashed-asset route');
@@ -71,6 +72,8 @@ test('hashed Vite entry assets receive immutable caching while stable public fil
   assert.match(vite, /entryFileNames: 'assets\/main-\[hash\]\.js'/);
   assert.match(vite, /chunkFileNames: 'assets\/main-\[hash\]\.js'/);
   assert.match(vite, /assetFileNames: 'assets\/main-\[hash\]\[extname\]'/);
+  assert.match(vite, /versionServiceWorker/);
+  assert.match(serviceWorker, /ios-review-gate-__BUILD_ID__/);
   for (const emittedHashedAsset of ['/assets/main-a1b2c3d4.js', '/assets/main-a1b2c3d4.css']) {
     assert.equal(immutableAssetRouteMatches(immutable.route, emittedHashedAsset), true, `${emittedHashedAsset} must match immutable caching`);
   }
