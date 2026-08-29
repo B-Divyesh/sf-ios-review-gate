@@ -79,7 +79,12 @@ Static deployment `086dd99b-74f5-4559-bf3a-e97be90f31a6` was completed on
 no console errors, the expected title and `lang=en`, one `h1`, one main
 landmark, complete image alt text, and labeled buttons. The live missing route
 `/does-not-exist` returned HTTP 404 and rendered “This release sheet is
-missing.” `sw.js` is served with `Cache-Control: no-cache`.
+missing.” `sw.js` is served with `Cache-Control: no-cache`. A live Playwright
+AxeBuilder 4.10.2 scan of `/`, `/demo`, `/privacy`, `/terms`, and the missing
+route at 1440×900 and 390×844 found zero serious or critical violations and
+zero unexpected console errors. `npx @axe-core/cli` was also invoked, but its
+Selenium runner cannot locate a system Chrome binary in this image; the
+Playwright scan uses the preinstalled browser and the same axe engine.
 
 To repeat the package and deployment checks:
 
