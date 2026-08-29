@@ -1,4 +1,4 @@
-const CACHE = 'ios-review-gate-v3';
+const CACHE = 'ios-review-gate-v4';
 const SHELL = ['/', '/demo', '/privacy', '/terms', '/assets/b612-mono.woff2', '/assets/release-blueprint.webp', '/assets/terminal-recording.svg'];
 
 async function appAssets() {

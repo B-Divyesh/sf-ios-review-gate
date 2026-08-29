@@ -105,8 +105,15 @@
     "sandbox": "fresh browser context with a recorded valid Sociobot verification response"
   },
   {
+    "id": "team-purchase",
+    "claim": "A $39 one-time Team purchase starts at the hosted Sociobot checkout",
+    "where": "paid tier, terms page, README",
+    "test": "npm run build:site && npx playwright test --grep @claim:team-purchase",
+    "sandbox": "fresh browser context with the checkout navigation intercepted; assert the exact price and production Sociobot URL"
+  },
+  {
     "id": "team-policy-download",
-    "claim": "A verified Team license unlocks a local policy download with the chosen queue limit",
+    "claim": "A verified Team license enables a local policy download with the chosen queue limit",
     "where": "paid tier, terms page",
     "test": "npm run build:site && npx playwright test --grep @claim:team-policy-download",
     "sandbox": "fresh browser context with a cached recorded license verdict"

@@ -28,7 +28,7 @@ test('@claim:browser-demo-local saves no personal release data and sends no cros
   expect(storage.session).toEqual([]);
   expect(storage.cookies).toBe('');
   expect(storage.databases).toEqual([]);
-  expect(storage.caches).toEqual(['ios-review-gate-v3']);
+  expect(storage.caches).toEqual(['ios-review-gate-v4']);
 });
 
 test('routes expose one h1, titles, keyboard focus, and no serious axe findings', async ({ page }) => {
@@ -80,7 +80,7 @@ test('warmed demo reloads offline with its cached app shell', async ({ page, con
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await expect.poll(() => page.evaluate(async () => {
-    const cache = await caches.open('ios-review-gate-v3');
+    const cache = await caches.open('ios-review-gate-v4');
     const paths = (await cache.keys()).map(request => new URL(request.url).pathname);
     return paths.some(path => /^\/assets\/index-.+\.js$/.test(path))
       && paths.some(path => /^\/assets\/index-.+\.css$/.test(path));
@@ -107,6 +107,21 @@ test('mobile layout keeps the first action visible and avoids horizontal scroll'
   await expect(page.getByRole('link', { name: 'Try it with sample data' })).toBeVisible();
   const widths = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
   expect(widths.scroll).toBe(widths.client);
+});
+
+test('mobile default text gives every interactive control a 44px target on every route', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const path of ['/', '/demo', '/privacy', '/terms', '/404.html']) {
+    await page.goto(path);
+    const targets = await page.locator('a, button, input').evaluateAll(elements => elements.map(element => {
+      const box = element.getBoundingClientRect();
+      return { label: element.getAttribute('aria-label') || element.textContent.trim() || element.id, width: box.width, height: box.height };
+    }));
+    for (const target of targets) {
+      expect(target.width, `${path}: ${target.label}`).toBeGreaterThanOrEqual(44);
+      expect(target.height, `${path}: ${target.label}`).toBeGreaterThanOrEqual(44);
+    }
+  }
 });
 
 test('mobile 200% text reflows navigation without overflow and all links meet the touch baseline', async ({ page }) => {
@@ -200,13 +215,26 @@ test('@claim:license-restore verifies and stores a Team license', async ({ page 
   expect(await page.evaluate(() => localStorage.getItem('sb_license:ios-review-gate'))).toBe('test-token');
 });
 
-test('an inactive Team license never points to an unavailable checkout', async ({ page }) => {
+test('@claim:team-purchase starts the $39 one-time purchase at hosted Sociobot checkout', async ({ page }) => {
+  let checkoutRequest = '';
+  await page.route('https://api.sociobot.in/api/v1/products/ios-review-gate/checkout', async route => {
+    checkoutRequest = route.request().url();
+    await route.fulfill({ status: 200, contentType: 'text/html', body: '<title>Hosted checkout</title><main>Hosted checkout</main>' });
+  });
+  await page.goto('/');
+  await expect(page.getByText('$39', { exact: true })).toBeVisible();
+  await expect(page.getByText('One-time Team license', { exact: true })).toBeVisible();
+  await page.getByRole('link', { name: /Buy Team license/ }).click();
+  expect(checkoutRequest).toBe('https://api.sociobot.in/api/v1/products/ios-review-gate/checkout');
+});
+
+test('an inactive Team license keeps the hosted checkout available', async ({ page }) => {
   await page.route('https://api.sociobot.in/api/v1/products/ios-review-gate/verify?license=inactive-token', route => route.fulfill({ json: { valid: false, reason: 'invalid', expires_at: null } }));
   await page.goto('/');
   await page.getByLabel('Have a license? Paste it here.').fill('inactive-token');
   await page.getByRole('button', { name: 'Verify Team license' }).click();
-  await expect(page.getByText('License not active. Check the token or contact your release administrator.')).toBeVisible();
-  await expect(page.getByText(/buy a license/i)).toHaveCount(0);
+  await expect(page.getByText('License not active. Check the token or use Buy Team license.')).toBeVisible();
+  await expect(page.getByRole('link', { name: /Buy Team license/ })).toHaveAttribute('href', 'https://api.sociobot.in/api/v1/products/ios-review-gate/checkout');
 });
 
 test('checkout return stores, strips, and can remove a Team license', async ({ page }) => {

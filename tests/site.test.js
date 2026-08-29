@@ -42,8 +42,9 @@ test('every repaired visitor promise is registered to an exact claim test', asyn
     ['core-without-team-license', 'Checks and packets need no Team license.'],
     ['same-checker-demo', 'The website sample and command use the same bundled checker.'],
     ['actionable-mismatch-errors', 'Errors name the mismatch and the next fix.'],
-    ['team-policy-download', 'Verified Team licenses unlock the local policy download.'],
+    ['team-policy-download', 'Verified Team licenses enable the local policy download.'],
     ['team-queue-history', 'Team policies support queue histories beyond three submissions.'],
+    ['team-purchase', 'One-time Team license'],
   ];
 
   for (const [id, publicCopy] of required) {

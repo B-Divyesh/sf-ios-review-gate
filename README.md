@@ -86,11 +86,11 @@ Build only the deployable site with `npm run build:site`. Build only the release
 
 ## Privacy and price
 
-The CLI has no telemetry and makes no network requests. Inputs and packets remain on your machine. Core checks and packet export work without a Team license. Existing Team licenses unlock local policy downloads. Team policies support queue histories beyond three submissions. License verification uses Sociobot's billing API. Team checkout is not available from this site right now.
+The CLI has no telemetry and makes no network requests. Inputs and packets remain on your machine. Core checks and packet export work without a Team license. A Team license costs $39 once and adds local policy downloads. Team policies support queue histories beyond three submissions. Purchases and license verification use Sociobot's billing API.
 
 Pass a Team policy from the website builder with `--policy team-policy.yaml`. See [`examples/team-policy.yaml`](examples/team-policy.yaml) for the file shape.
 
-See the website [privacy page](https://ios-review-gate.sociobot.in/privacy) and [terms](https://ios-review-gate.sociobot.in/terms). Sociobot is the merchant of record for purchases.
+See the website [privacy page](https://ios-review-gate.sociobot.in/privacy) and [terms](https://ios-review-gate.sociobot.in/terms). Dodo is the merchant of record for Sociobot purchases and handles refunds.
 
 ## Publishing
 

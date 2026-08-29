@@ -25,22 +25,24 @@ Audited 2026-08-29 against the plain-words rules. Counts treat hyphenated terms 
 | 9 | It has no telemetry and sends no release data. |
 | 13 | It does not upload builds, scrape App Store Connect, or predict Apple's decision. |
 | 10 | Core checks and packet export work without a Team license. |
-| 8 | Verified Team licenses unlock the local policy download. |
+| 8 | Verified Team licenses enable the local policy download. |
 | 8 | Team policies support queue histories beyond three submissions. |
-| 8 | Team checkout is not available right now. |
+| 9 | Dodo is the merchant of record for Sociobot purchases. |
+| 3 | Dodo handles refunds. |
+| 5 | A refund deactivates the license. |
+| 4 | See privacy and terms. |
 | 3 | Have a license? |
 | 3 | Paste it here. |
-| 6 | Sociobot is the merchant of record. |
-| 2 | See terms. |
 | 11 | Build a shared policy file for queue limits and approved reason codes. |
 | 4 | Verified on this device. |
 | 3 | License not active. |
-| 8 | Check the token or contact your release administrator. |
+| 8 | Check the token or use Buy Team license. |
 | 6 | Could not check the license. |
 | 5 | Connect once and try again. |
 | 6 | License removed from this browser. |
 | 3 | Team policy downloaded. |
 | 7 | Pass it to the CLI with --policy. |
+| 4 | License no longer active. |
 | 9 | Check an iOS release and print its review packet. |
 
 No sentence exceeds 22 words. No sentence contains a banned word.
@@ -49,7 +51,7 @@ No sentence exceeds 22 words. No sentence contains a banned word.
 
 - Headline: “Check your iOS release before review” — 7 words.
 - Primary action: “Try it with sample data” — 6 words.
-- Other headings and controls use one to seven words.
+- Other headings and controls use one to seven words. “One-time Team license” is a three-word price label.
 - Catalog description: “Check an iOS release and print its review packet.” — 9 words and 50 characters.
 
 ## Terminology

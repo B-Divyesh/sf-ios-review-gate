@@ -6,6 +6,7 @@ const PRODUCT = 'ios-review-gate';
 const LICENSE_KEY = `sb_license:${PRODUCT}`;
 const VERDICT_KEY = `${LICENSE_KEY}:verdict`;
 const API = 'https://api.sociobot.in/api/v1';
+const CHECKOUT = `${API}/products/${PRODUCT}/checkout`;
 let licenseActive = false;
 let licenseNotice = '';
 
@@ -26,8 +27,8 @@ const shell = (content, demoMode = false) => `${demoMode ? `<aside class="demo-b
 function paidSection() {
   const controls = licenseActive
     ? `<div class="license-active"><p class="active-label">Team license active</p><p>Build a shared policy file for queue limits and approved reason codes.</p><form id="policy-form"><label for="policy-name">Policy name</label><input id="policy-name" name="name" value="Release team" required><label for="history-limit">Active submission limit</label><input id="history-limit" name="limit" type="number" min="3" max="99" value="8" required><button class="button secondary" type="submit">Download Team policy</button></form><button class="text-button" id="remove-license" type="button">Remove license from this browser</button></div>`
-    : `<p class="availability-note">Team checkout is not available right now. Existing license holders can restore their access below.</p><form id="license-form"><label for="license-token">Have a license? Paste it here.</label><input id="license-token" name="license" autocomplete="off" required><button class="button secondary" type="submit">Verify Team license</button></form>`;
-  return `<section class="paid section-rule" aria-labelledby="paid-title"><div><p class="section-no">TEAM POLICY</p><h2 id="paid-title">Keep team rules beside the release</h2><p>Core checks and packet export work without a Team license. Verified Team licenses unlock the local policy download. Team policies support queue histories beyond three submissions.</p></div><div class="price-box">${controls}<p id="license-status" class="legal-note" aria-live="polite">${escapeHtml(licenseNotice)}</p><p class="legal-note">Sociobot is the merchant of record. See <a href="/terms" data-link>terms</a>.</p></div></section>`;
+    : `<a class="button primary" href="${CHECKOUT}" rel="external">Buy Team license<span class="sr-only"> at Sociobot checkout</span></a><form id="license-form"><label for="license-token">Have a license? Paste it here.</label><input id="license-token" name="license" autocomplete="off" required><button class="button secondary" type="submit">Verify Team license</button></form>`;
+  return `<section class="paid section-rule" aria-labelledby="paid-title"><div><p class="section-no">TEAM POLICY</p><h2 id="paid-title">Keep team rules beside the release</h2><p>Core checks and packet export work without a Team license. Verified Team licenses enable the local policy download. Team policies support queue histories beyond three submissions.</p></div><div class="price-box"><p class="price"><span>$</span>39</p><p class="price-note">One-time Team license</p>${controls}<p id="license-status" class="legal-note" aria-live="polite">${escapeHtml(licenseNotice)}</p><p class="legal-note">Dodo is the merchant of record for Sociobot purchases. Dodo handles refunds. A refund deactivates the license. See <a href="/privacy" data-link>privacy</a> and <a href="/terms" data-link>terms</a>.</p></div></section>`;
 }
 
 function landing() {
@@ -64,7 +65,7 @@ Buffered decision: 2026-09-06</code></pre></section>`, true);
 
 function legal(kind) {
   const privacy = kind === 'privacy';
-  return shell(`<article class="legal"><p class="eyebrow">Effective 29 August 2026</p><h1>${privacy ? 'Privacy for iOS Review Gate' : 'Terms for iOS Review Gate'}</h1>${privacy ? `<h2>Release files stay on your machine</h2><p>The CLI reads only the paths you provide. It does not send telemetry or release data.</p><h2>Website storage</h2><p>The demo keeps no personal release data. Its offline shell uses Cache Storage for static site files only. If you paste or receive a license, your browser stores the token and its last verification result. You can clear them in browser settings.</p><h2>License verification</h2><p>The browser sends a license token to the Sociobot billing API. It sends no release files. Sociobot processes purchases as merchant of record.</p><h2>Contact</h2><p>Email <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a> with a privacy question.</p>` : `<h2>Local preflight, not Apple approval</h2><p>The checker finds inconsistencies in the files you provide. It does not guarantee approval or replace Apple's current guidance.</p><h2>License</h2><p>The free CLI is available under the MIT License. Existing Team licenses unlock local policy downloads. Team policies support queue histories beyond three submissions.</p><h2>Team checkout</h2><p>Team checkout is not available from this site right now. Existing license holders can restore a token on the home page.</p><h2>Warranty</h2><p>The software is provided as is, without warranty. You remain responsible for each submission.</p>`}</article>`);
+  return shell(`<article class="legal"><p class="eyebrow">Effective 29 August 2026</p><h1>${privacy ? 'Privacy for iOS Review Gate' : 'Terms for iOS Review Gate'}</h1>${privacy ? `<h2>Release files stay on your machine</h2><p>The CLI reads only the paths you provide. It does not send telemetry or release data.</p><h2>Website storage</h2><p>The demo keeps no personal release data. Its offline shell uses Cache Storage for static site files only. If you paste or receive a license, your browser stores the token and its last verification result. You can clear them in browser settings.</p><h2>License verification</h2><p>The browser sends a license token to the Sociobot billing API. It sends no release files. Dodo is the merchant of record for Sociobot purchases.</p><h2>Contact</h2><p>Email <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a> with a privacy question.</p>` : `<h2>Local preflight, not Apple approval</h2><p>The checker finds inconsistencies in the files you provide. It does not guarantee approval or replace Apple's current guidance.</p><h2>License</h2><p>The free CLI is available under the MIT License. A Team license costs $39 once and adds local policy downloads. Team policies support queue histories beyond three submissions.</p><h2>Purchase and refunds</h2><p>The purchase uses Sociobot's hosted checkout. Dodo is the merchant of record for Sociobot purchases. Dodo handles refunds. A refund deactivates the license.</p><h2>Warranty</h2><p>The software is provided as is, without warranty. You remain responsible for each submission.</p>`}</article>`);
 }
 
 function notFound() {
@@ -138,7 +139,7 @@ async function restoreLicense(event) {
   localStorage.setItem(LICENSE_KEY, token);
   const verdict = await verifyLicense(token);
   licenseActive = verdict === true;
-  licenseNotice = verdict === null ? 'Could not check the license. Connect once and try again.' : licenseActive ? 'Verified on this device.' : 'License not active. Check the token or contact your release administrator.';
+  licenseNotice = verdict === null ? 'Could not check the license. Connect once and try again.' : licenseActive ? 'Verified on this device.' : 'License not active. Check the token or use Buy Team license.';
   renderPaidPanel();
 }
 
@@ -182,7 +183,7 @@ async function initializeLicense() {
   if (licenseActive) renderPaidPanel();
   const valid = await verifyLicense(token);
   if (valid !== null && valid !== licenseActive) { licenseActive = valid; renderPaidPanel(); }
-  if (valid === false) { licenseNotice = 'License no longer active. Check the token or contact your release administrator.'; renderPaidPanel(); }
+  if (valid === false) { licenseNotice = 'License no longer active. Check the token or use Buy Team license.'; renderPaidPanel(); }
 }
 
 render();
