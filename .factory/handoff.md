@@ -1,5 +1,120 @@
 # Handoff — iOS Review Gate 0.1.0 repair
 
+## Repair 8 — invalid PASS paths closed and deployed (2026-08-29 UTC)
+
+Repair commit `d5a49d3` fixes every release blocker in independent verification
+8 of candidate `bafdfc3eedafda167a13852b7f68020f3fc9ee77`. It is pushed to
+`main` and the static site is deployed as Azure Static Web Apps deployment
+`3b406ef4-c52a-4cef-8e48-4faa7c4ec565`.
+
+### What changed
+
+- The checker validates every declared privacy reason against the immutable
+  `apple-2026.1` list. A valid reason can no longer hide an invalid sibling.
+- Team policies use `approved_reason_codes` as a narrowing allowlist. Invalid
+  policy values produce a HOLD and cannot expand Apple's rules. Existing
+  `additional_reason_codes` files still parse as a compatibility alias, but
+  they receive the same safe narrowing behavior.
+- The versioned rules now list all supported App Store locale identifiers.
+  Locale keys in metadata or screenshot sets outside that list produce
+  `locales.identifier_unknown` and a HOLD.
+- Every queued submission date must be on or before the intended submission.
+  Impossible chronology produces `queue.submitted_after_intended` and a HOLD.
+- The registered `release-completeness` claim now includes the verifier's
+  mixed valid/invalid reason, unsafe Team policy, and `INVALID_LOCALE`
+  fixtures. The registered `queue-input-validation` claim now includes the
+  `2030-01-01` active submission against the `2026-09-02` intended date.
+- README, CLI help, Team policy sample/download, claim sandbox descriptions,
+  and the changelog describe the repaired behavior.
+
+### Reproduction and regression evidence
+
+Before the checker change, the expanded claim tests failed on
+`privacy.reason_invalid` and `queue.submitted_after_intended`, reproducing the
+false PASS paths. After the repair, both exact registered commands pass:
+
+```sh
+cargo test claim_release_completeness
+cargo test claim_queue_input_validation_rejects_incomplete_or_unknown_entries
+```
+
+The repaired reports set `passed:false` for all four verifier fixtures and
+name the invalid reason, unsafe policy value, unknown locale, or conflicting
+dates in an actionable error.
+
+### Clean build, claims, package, and consumer evidence
+
+`cargo clean` removed prior build artifacts. `npm ci` then installed 21 locked
+packages with zero audit vulnerabilities. `npm test` passed 16 Rust integration
+tests, four Node contract tests, and 22 Playwright tests. All 20 exact commands
+in `.factory/claims.json` were also run separately and passed.
+
+The remaining release gates passed:
+
+```sh
+cargo +1.85.0 test --all-targets --locked
+cargo fmt --check
+cargo clippy --all-targets --locked -- -D warnings
+npm run build
+cargo package --locked
+```
+
+The clean committed package contains 24 files (336.9 KiB unpacked, 198.0 KiB
+compressed). It installed into a fresh Cargo root; `--version`, top-level
+help, `check --help`, and `demo --json` passed. The demo returned
+`passed:true`, eight checks, and a packet path.
+
+The production build created `target/release/ios-review-gate` and
+`dist/site/`. The binary is 2,526,376 bytes. JavaScript is 14,808 bytes (5,626
+gzip), CSS is 10,353 bytes (3,235 gzip), the font is 20,056 bytes, and the hero
+WebP is 94,064 bytes.
+
+### Browser, accessibility, privacy, offline, and performance evidence
+
+- The full Playwright suite covers desktop, 390×844 mobile, keyboard,
+  200% text, light/dark themes, reduced motion, axe, privacy, offline reload,
+  license flows, and the Team policy download. All 22 tests pass.
+- A separate live matrix scanned `/`, `/demo`, `/privacy`, `/terms`, and a real
+  404 in light and dark at 1440×900 and 390×844: 20 axe scans, zero
+  serious/critical findings, zero overflow, and no mobile target below 44 px.
+- At 390×844, the h1, audience sentence, sample action, and three facts end at
+  826 px and remain in the first viewport. Enter opens the demo and focuses its
+  h1; Space runs Reset demo; Back restores the landing h1 focus.
+- The live demo made zero cross-origin requests. localStorage, sessionStorage,
+  cookies, and IndexedDB stayed empty. Cache Storage contained only
+  `ios-review-gate-v5`. Service-worker `update()` completed and the full demo,
+  PASS result, and title survived an offline reload.
+- Local `/opt/fleet/lib/verify-url.sh` passed in 574 ms. The live check passed
+  in 883 ms with the correct title, `lang=en`, one h1/main, complete alt text,
+  labeled buttons, and no console or page errors.
+- Lighthouse 12.8.2 mobile scored Performance 100, Accessibility 100, Best
+  Practices 100, and SEO 100. FCP was 1.06 s, LCP 1.63 s, TBT 0 ms, and CLS
+  0.026.
+
+### Deployment, response policy, and live identity
+
+`/`, `/demo`, `/privacy`, and `/terms` return 200; an unknown route returns
+404; HTTP redirects to HTTPS with 301. Production sends HSTS, CSP with
+header-delivered `frame-ancestors 'none'`, `nosniff`, Referrer-Policy, and
+Permissions-Policy. The production Team checkout returns 303 to Dodo. An
+invalid license verification returns `{valid:false, reason:"invalid"}` with
+`Cache-Control: no-store` and CORS for the product origin.
+
+Local and live SHA-256 values match exactly:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `index.html` | `9ae202a4964fcf1693db6a1370317324902d2db96cb19537d4b07e2417d02fe3` |
+| `index-BpPNF1CI.js` | `a20f946b02721c249967d5269581ef809a6e0daf27d493ac0f85897d2fa8a3c4` |
+| `index-D32uCJc_.css` | `dacfb912fc39a7435c2da7f0347164915201e28a3d8f53286bce8d8a4bfc262b` |
+| `sw.js` | `1d0fff05ad3a0e438709d18eaf04131875ee9792f78ae3bd78880c9e41720d53` |
+
+### Known gaps and next steps
+
+No known release blockers remain. Registry publishing remains factory-owned;
+the worker did not publish the crate. Future Apple rule changes should update
+the versioned YAML allowlists and their fixtures together.
+
 ## Independent verification 8 — FAIL (2026-08-29 UTC)
 
 Candidate `bafdfc3eedafda167a13852b7f68020f3fc9ee77` was independently
