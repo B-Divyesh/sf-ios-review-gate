@@ -1,6 +1,6 @@
 # Landing-page copy audit
 
-Audited 2026-08-28 against the plain-words rules. Counts treat hyphenated terms and prices as one word. Headings, labels, buttons, and code are listed separately because they are fragments, not sentences.
+Audited 2026-08-29 against the plain-words rules. Counts treat hyphenated terms and prices as one word. Headings, labels, buttons, and code are listed separately because they are fragments, not sentences.
 
 ## Sentences
 
@@ -10,9 +10,9 @@ Audited 2026-08-28 against the plain-words rules. Counts treat hyphenated terms 
 | 7 | See a checked release and its packet. |
 | 4 | Runs on your machine. |
 | 4 | No App Store access. |
-| 5 | Free checks and packets. |
+| 7 | Checks and packets need no Team license. |
 | 15 | An exploded drafting view connects an app archive, metadata sheets, screenshots, and a review queue. |
-| 9 | The same checker powers the command and the sample. |
+| 10 | The website sample and command use the same bundled checker. |
 | 8 | Errors name the mismatch and the next fix. |
 | 13 | Terminal output shows the bundled release passing every check and writing a packet. |
 | 12 | The bundled demo checks a complete sample release and writes its packet. |
@@ -24,8 +24,9 @@ Audited 2026-08-28 against the plain-words rules. Counts treat hyphenated terms 
 | 8 | The CLI reads the paths you give it. |
 | 9 | It has no telemetry and sends no release data. |
 | 13 | It does not upload builds, scrape App Store Connect, or predict Apple's decision. |
-| 9 | The free gate includes every core check and packet export. |
-| 14 | A Team license adds a local policy builder and queue histories beyond three submissions. |
+| 10 | Core checks and packet export work without a Team license. |
+| 8 | Verified Team licenses unlock the local policy download. |
+| 8 | Team policies support queue histories beyond three submissions. |
 | 8 | Team checkout is not available right now. |
 | 3 | Have a license? |
 | 3 | Paste it here. |

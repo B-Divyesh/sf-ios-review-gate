@@ -34,3 +34,22 @@ test('factory contracts and static host configuration are valid JSON', async () 
   assert.deepEqual(host.responseOverrides['404'], { rewrite: '/404.html', statusCode: 404 });
   await stat('site/public/404.html');
 });
+
+test('every repaired visitor promise is registered to an exact claim test', async () => {
+  const claims = JSON.parse(await readFile('.factory/claims.json', 'utf8'));
+  const source = await readFile('site/src/main.js', 'utf8');
+  const required = [
+    ['core-without-team-license', 'Checks and packets need no Team license.'],
+    ['same-checker-demo', 'The website sample and command use the same bundled checker.'],
+    ['actionable-mismatch-errors', 'Errors name the mismatch and the next fix.'],
+    ['team-policy-download', 'Verified Team licenses unlock the local policy download.'],
+    ['team-queue-history', 'Team policies support queue histories beyond three submissions.'],
+  ];
+
+  for (const [id, publicCopy] of required) {
+    const claim = claims.find(item => item.id === id);
+    assert.ok(claim, `missing registered claim: ${id}`);
+    assert.ok(claim.test, `missing regression command for: ${id}`);
+    assert.ok(source.includes(publicCopy), `public copy is not covered: ${publicCopy}`);
+  }
+});

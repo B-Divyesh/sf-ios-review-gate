@@ -21,11 +21,32 @@
     "sandbox": "temporary directory populated only with bundled sample data"
   },
   {
+    "id": "core-without-team-license",
+    "claim": "Core checks and packet export work without a Team license",
+    "where": "landing facts, Team policy section, README",
+    "test": "cargo test claim_core_gate_runs_without_team_license_and_writes_packet",
+    "sandbox": "fresh CLI process with bundled sample inputs and no Team policy; assert all eight checks and a packet"
+  },
+  {
     "id": "bundled-cli-demo",
     "claim": "The CLI demo runs on bundled data in a new temporary workspace",
     "where": "README",
     "test": "cargo test claim_bundled_demo",
     "sandbox": "fresh command process; assert packet exists under the reported temp path"
+  },
+  {
+    "id": "same-checker-demo",
+    "claim": "The website sample and command use the same bundled checker",
+    "where": "landing preview, demo page",
+    "test": "cargo test claim_demo_recording_matches_bundled_cli",
+    "sandbox": "fresh CLI demo; assert copied bundled inputs, matching CLI result, and website recording command/status markers"
+  },
+  {
+    "id": "actionable-mismatch-errors",
+    "claim": "Errors name the mismatch and the next fix",
+    "where": "landing preview",
+    "test": "cargo test claim_actionable_mismatch_error_names_values_and_fix",
+    "sandbox": "fresh CLI process with a seeded version mismatch; assert the error reports both values and a repair instruction"
   },
   {
     "id": "queue-plan",
@@ -71,9 +92,16 @@
   },
   {
     "id": "team-policy-download",
-    "claim": "A verified Team license downloads a local policy file with the chosen queue limit",
-    "where": "paid tier",
+    "claim": "A verified Team license unlocks a local policy download with the chosen queue limit",
+    "where": "paid tier, terms page",
     "test": "npm run build:site && npx playwright test --grep @claim:team-policy-download",
     "sandbox": "fresh browser context with a cached recorded license verdict"
+  },
+  {
+    "id": "team-queue-history",
+    "claim": "A Team policy supports queue histories beyond three submissions",
+    "where": "paid tier, terms page, README",
+    "test": "cargo test claim_team_policy_supports_queue_history_beyond_three_submissions",
+    "sandbox": "bundled sample with five completed submissions; assert the default limit warns and a Team policy of eight removes that warning"
   }
 ]

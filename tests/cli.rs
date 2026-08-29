@@ -10,6 +10,27 @@ fn sample() -> (ArtifactMetadata, Release) {
     (metadata, release)
 }
 
+fn write_sample_workspace(
+    root: &Path,
+) -> (std::path::PathBuf, std::path::PathBuf, std::path::PathBuf) {
+    let metadata = root.join("metadata.json");
+    let release = root.join("release.yaml");
+    let screenshot = root.join("screenshots/en-US/iphone-69/home.jpg");
+    fs::create_dir_all(screenshot.parent().unwrap()).unwrap();
+    fs::write(
+        &metadata,
+        include_bytes!("../examples/sample/metadata.json"),
+    )
+    .unwrap();
+    fs::write(&release, include_bytes!("../examples/sample/release.yaml")).unwrap();
+    fs::write(
+        &screenshot,
+        include_bytes!("../examples/sample/screenshots/en-US/iphone-69/home.jpg"),
+    )
+    .unwrap();
+    (metadata, release, screenshot)
+}
+
 #[test]
 fn documented_sample_passes() {
     let (metadata, release) = sample();
@@ -116,13 +137,21 @@ fn invalid_identity_images_and_queue_durations_cannot_pass() {
 }
 
 #[test]
-fn team_policy_extends_reason_codes_and_queue_history() {
+fn claim_team_policy_supports_queue_history_beyond_three_submissions() {
     let (mut metadata, mut release) = sample();
     metadata.accessed_apis[0].reasons = vec!["TEAM.1".into()];
     release.queue.active_submissions = (0..5)
         .map(|index| serde_yaml::from_str(&format!("version: 2.3.{index}\nbuild: \"{index}\"\nstatus: completed\nsubmitted_on: 2026-08-0{}", index + 1)).unwrap())
         .collect();
     let policy: TeamPolicy = serde_yaml::from_str("name: Mobile team\nmax_active_submissions: 8\nadditional_reason_codes:\n  UserDefaults: [TEAM.1]\n").unwrap();
+    let default_report = check(&metadata, &release, Path::new("examples/sample"));
+    assert!(
+        default_report
+            .findings
+            .iter()
+            .any(|item| item.code == "queue.history_limit"),
+        "the free/default history retains its three-submission limit"
+    );
     let report = check_with_policy(
         &metadata,
         &release,
@@ -199,6 +228,39 @@ fn claim_markdown_packet_writes_dated_decision_record() {
 }
 
 #[test]
+fn claim_core_gate_runs_without_team_license_and_writes_packet() {
+    let temp = tempfile::tempdir().unwrap();
+    let (metadata, release, _) = write_sample_workspace(temp.path());
+    let packet = temp.path().join("packet.md");
+    let output = Command::cargo_bin("ios-review-gate")
+        .unwrap()
+        .arg("check")
+        .arg("--metadata")
+        .arg(&metadata)
+        .arg("--release")
+        .arg(&release)
+        .arg("--output")
+        .arg(&packet)
+        .arg("--json")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let report: serde_json::Value = serde_json::from_slice(&output).unwrap();
+
+    assert_eq!(report["passed"], true);
+    assert_eq!(report["summary"]["checks"].as_u64(), Some(8));
+    assert!(report["policy"].is_null());
+    assert_eq!(report["packet_path"].as_str(), packet.to_str());
+    assert!(
+        fs::read_to_string(packet)
+            .unwrap()
+            .contains("## Decision record")
+    );
+}
+
+#[test]
 fn claim_bundled_demo_runs_in_a_new_temp_workspace() {
     let output = Command::cargo_bin("ios-review-gate")
         .unwrap()
@@ -215,6 +277,104 @@ fn claim_bundled_demo_runs_in_a_new_temp_workspace() {
         .find(|line| line.starts_with("Packet: "))
         .unwrap();
     assert!(Path::new(packet_line.trim_start_matches("Packet: ")).is_file());
+}
+
+#[test]
+fn claim_demo_recording_matches_bundled_cli() {
+    let output = Command::cargo_bin("ios-review-gate")
+        .unwrap()
+        .arg("demo")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let text = String::from_utf8(output).unwrap();
+    let workspace = text
+        .lines()
+        .find_map(|line| line.strip_prefix("Workspace: "))
+        .map(std::path::PathBuf::from)
+        .expect("the demo reports its workspace");
+    let packet = text
+        .lines()
+        .find_map(|line| line.strip_prefix("Packet: "))
+        .map(std::path::PathBuf::from)
+        .expect("the demo reports its packet");
+
+    assert_eq!(
+        fs::read(workspace.join("metadata.json")).unwrap(),
+        include_bytes!("../examples/sample/metadata.json").as_slice()
+    );
+    assert_eq!(
+        fs::read(workspace.join("release.yaml")).unwrap(),
+        include_bytes!("../examples/sample/release.yaml").as_slice()
+    );
+    assert!(packet.is_file());
+
+    let check_output = Command::cargo_bin("ios-review-gate")
+        .unwrap()
+        .arg("check")
+        .arg("--metadata")
+        .arg(workspace.join("metadata.json"))
+        .arg("--release")
+        .arg(workspace.join("release.yaml"))
+        .arg("--json")
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    let report: serde_json::Value = serde_json::from_slice(&check_output).unwrap();
+    assert_eq!(report["passed"], true);
+    assert_eq!(report["summary"]["checks"].as_u64(), Some(8));
+
+    let recording = include_str!("../site/public/assets/terminal-recording.svg");
+    assert!(recording.contains("ios-review-gate demo"));
+    for expected in [
+        "Demo — sample data, nothing from your projects was read.",
+        "PASS — 0 errors, 0 warnings",
+    ] {
+        assert!(
+            recording.contains(expected),
+            "recording is missing {expected}"
+        );
+        assert!(text.contains(expected), "CLI demo is missing {expected}");
+    }
+}
+
+#[test]
+fn claim_actionable_mismatch_error_names_values_and_fix() {
+    let temp = tempfile::tempdir().unwrap();
+    let (metadata, release, _) = write_sample_workspace(temp.path());
+    let mismatched = include_str!("../examples/sample/metadata.json")
+        .replace("\"version\": \"2.4.0\"", "\"version\": \"2.3.9\"");
+    fs::write(&metadata, mismatched).unwrap();
+
+    let output = Command::cargo_bin("ios-review-gate")
+        .unwrap()
+        .arg("check")
+        .arg("--metadata")
+        .arg(&metadata)
+        .arg("--release")
+        .arg(&release)
+        .arg("--json")
+        .assert()
+        .code(2)
+        .get_output()
+        .stdout
+        .clone();
+    let report: serde_json::Value = serde_json::from_slice(&output).unwrap();
+    let finding = report["findings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|item| item["code"] == "identity.version")
+        .expect("version mismatch finding");
+    let message = finding["message"].as_str().unwrap();
+    let fix = finding["fix"].as_str().unwrap();
+
+    assert!(message.contains("2.3.9") && message.contains("2.4.0"));
+    assert!(fix.contains("Set release.yaml to the archived marketing version."));
 }
 
 #[test]
