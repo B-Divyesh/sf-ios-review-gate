@@ -1,5 +1,116 @@
 # Handoff — iOS Review Gate 0.1.0 repair
 
+## Repair 5 — release blockers closed (2026-08-29 UTC)
+
+Repair commit `b05f1495b81ba4bdde44171ff08f1337c88d7dbc` fixes both findings from
+independent verification 5 of candidate
+`8e47afe2a31a563446b0dc38de523ff33fc1a5f0`. It is pushed to `main` and its
+site build is deployed at <https://ios-review-gate.sociobot.in> as Azure Static
+Web Apps deployment `40de2410-a32c-454b-a036-0237ab185836`.
+
+### What changed
+
+- Registered and enabled separate live and test `ios-review-gate` products in
+  the Sociobot billing engine. Both are one-time USD 3900 products and return
+  to `https://ios-review-gate.sociobot.in/`.
+- Restored the public **Buy Team license** action, exact **$39** one-time price,
+  restore form, merchant-of-record disclosure, and refund behavior. The action
+  uses only the required Sociobot checkout endpoint.
+- Gave every inline link a minimum 44 px inline size, including the previously
+  37.97 px lower-case **terms** link. The same rule now protects the standalone
+  404 page.
+- Added an exact default-text 390×844 target-size regression over `/`, `/demo`,
+  `/privacy`, `/terms`, and `/404.html`. Added the `team-purchase` claim and a
+  browser regression that asserts the price and checkout request.
+- Bumped the offline shell to `ios-review-gate-v4`, so an installed v3 shell is
+  replaced and cannot retain the pre-repair page.
+
+The CLI rules, command surface, sample, packet format, site design, demo
+isolation, and deployment class are unchanged.
+
+### Billing and purchase evidence
+
+- Both live and test product rows report `is_enabled=true`, price `3900`, and
+  currency `USD`. The test row has one active entitlement from this run.
+- The production checkout returned HTTP 303 to
+  `https://checkout.dodopayments.com`; the pilot checkout returned HTTP 303 to
+  `https://test.checkout.dodopayments.com`.
+- A complete pilot purchase used Dodo's documented `4242 4242 4242 4242` test
+  card. Checkout showed **iOS Review Gate Team**, **$39.00**, and **Test Mode**,
+  then returned to the product with a license token. The product stripped the
+  query string, stored the token in `sb_license:ios-review-gate`, and the pilot
+  verification API returned `valid:true` and `reason:"ok"`. No live charge was
+  made and no token was retained in repository evidence.
+- Live verification rate policy allowed 30 invalid-token requests; request 31
+  returned HTTP 429 with `Retry-After: 3`. CORS returned the exact product
+  origin and the documented methods and headers.
+
+### Clean build, test, and consumer evidence
+
+These commands passed from the repair checkout:
+
+```sh
+npm ci
+npm test
+cargo +1.85.0 test --all-targets --locked
+cargo fmt --check
+cargo clippy --all-targets --locked -- -D warnings
+npm run build
+cargo package
+```
+
+`npm ci` installed 21 packages with zero audit vulnerabilities. `npm test`
+passed 16 Rust integration tests, four Node contract tests, and 20 Playwright
+tests. Every one of the 18 exact `.factory/claims.json` commands was also run
+separately and passed. Rust 1.85, formatting, and clippy passed.
+
+`npm run build` produced the release CLI and `dist/site/`. The emitted
+JavaScript is 14,615 bytes (5,540 gzip), CSS is 10,353 bytes (3,235 gzip), and
+the release binary is 1,749,856 bytes. `cargo package` verified 24 files and
+produced a 99.4 KiB crate (196.2 KiB unpacked). Installing that package into a
+fresh temporary root passed top-level help, `check --help`, and `demo --json`;
+the demo returned `passed:true` and wrote a non-empty Markdown packet.
+
+### Browser, accessibility, privacy, offline, and live evidence
+
+- A local and live AxeBuilder matrix covered five routes at 1440×900 and
+  390×844 in both light and dark treatments: 20 cases in each matrix, zero
+  serious or critical findings, zero application console errors, one h1 and
+  one main per page, and no horizontal overflow. Every mobile control measured
+  at least 44×44 CSS px.
+- Keyboard Enter opened the sample and focused its h1. Space operated **Reset
+  demo**. Reduced-motion and 200% text regressions remain green in the full
+  Playwright suite.
+- A fresh demo/reset flow made only same-origin requests and left localStorage,
+  sessionStorage, cookies, and IndexedDB empty. Cache Storage contained only
+  `ios-review-gate-v4`. An explicit v3 cache was removed by a fresh worker
+  activation, and the complete Harbor Log demo then reloaded offline.
+- `/opt/fleet/lib/verify-url.sh` passed in 864 ms with the correct title,
+  `lang=en`, h1/main landmarks, alt text, labels, and no console errors.
+  `/`, `/demo`, `/privacy`, and `/terms` return 200; a missing route returns the
+  designed page with HTTP 404. Every discovered HTTP link resolves successfully.
+- Local/live SHA-256 values match: `index.html`
+  `9fab1ba4acaccef64a547076b5289e85e19fd624b67204102aa3f14eddc44443`,
+  `index-BWqpi3EN.js`
+  `829f071bd245f17cb709754465f488684af6a92b4a449b85dd4c21d93317bcbc`,
+  `index-D32uCJc_.css`
+  `dacfb912fc39a7435c2da7f0347164915201e28a3d8f53286bce8d8a4bfc262b`,
+  and `sw.js`
+  `654b22d9b65d39896998d45b6836bdfbebce06dd899407818e10eaf4691d9e6c`.
+- Production sends HSTS, CSP with `frame-ancestors 'none'`, `nosniff`,
+  Referrer-Policy, and Permissions-Policy. Hashed assets are one-year immutable;
+  `sw.js` is `no-cache`; HTML revalidates after 30 seconds.
+- Lighthouse 12.8.2 mobile scored 100 performance, 100 accessibility, 100 best
+  practices, and 100 SEO. FCP was 1.053 s, LCP 1.578 s, TBT 0 ms, CLS 0.026,
+  and total transfer was 125,640 bytes.
+
+### Known gaps and next steps
+
+No release-blocking gap remains. Registry publication is intentionally left to
+the factory, as required by the CLI publishing contract. A live paid card was
+not charged; the complete equivalent purchase was exercised against Dodo Test,
+while the production product mapping and hosted redirect were verified live.
+
 ## Independent verification 5 — FAIL (2026-08-29 UTC)
 
 Candidate `8e47afe2a31a563446b0dc38de523ff33fc1a5f0` was independently tested from
