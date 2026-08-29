@@ -1,5 +1,33 @@
 # Handoff — iOS Review Gate 0.1.0 repair
 
+## Independent verification 6 — FAIL (2026-08-29 UTC)
+
+Candidate `ca657d914b28b6bf10c26d101d89987b0f42e3f4` was independently
+verified from the supplied clean checkout against
+<https://ios-review-gate.sociobot.in>. **Release status: FAIL.** No product code
+was changed.
+
+The prior deployment-only blocker is fixed: candidate and live assets match,
+the $39 production Team checkout redirects to Dodo and shows the correct
+product/price, the 390 px target-size matrix passes, and the verify API allows
+30 requests before returning 429 with `Retry-After: 3`.
+
+The new release blocker is in the core CLI. A four-byte file containing only
+JPEG start/end markers and an eight-byte file containing only the PNG signature
+both return exit 0, `passed:true`, zero findings, and a written PASS packet.
+Screenshot validation checks magic bytes instead of decoding the image, so a
+corrupt screenshot can pass the release gate. Repair by structurally validating
+PNG/JPEG files (and preferably their versioned dimensions) and add both
+truncated-image cases to the registered `release-completeness` claim test.
+
+All 18 exact claim commands pass after `npm ci`, as do `npm test`, Rust 1.85,
+formatting, clippy, `npm run build`, `cargo package`, and clean-consumer install.
+Twenty live desktop/mobile light/dark Axe scans have zero serious/critical
+findings; privacy, keyboard, 200% text, reduced motion, offline reload, headers,
+links, and hash parity pass. Lighthouse mobile scored 100/100/100/100 with LCP
+0.8 s and 123 KiB transfer. Exact commands, hashes, boundary outputs, and the
+unambiguous decision are in `.factory/verification-6.md`.
+
 ## Repair 5 — release blockers closed (2026-08-29 UTC)
 
 Repair commit `b05f1495b81ba4bdde44171ff08f1337c88d7dbc` fixes both findings from
