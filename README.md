@@ -60,7 +60,7 @@ The JSON object contains `passed`, `summary`, `findings`, `queue`, and `packet_p
 
 `release.yaml` records the intended submission. See [`examples/sample/release.yaml`](examples/sample/release.yaml) for every field. Screenshot paths are relative to that file.
 
-Rules are versioned in the binary and named in every packet. Version `apple-2026.1` covers required localized fields, screenshot existence, privacy manifest presence, collected-data agreement, and approved reason codes for declared API categories.
+Rules are versioned in the binary and named in every packet. Version `apple-2026.1` covers required localized fields, decodable PNG/JPEG screenshots, privacy manifest presence, collected-data agreement, and approved reason codes for declared API categories.
 
 ## Queue input
 

@@ -1,4 +1,5 @@
 use chrono::{Days, NaiveDate, Utc};
+use image::ImageFormat;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
@@ -230,17 +231,19 @@ fn checked_queue_date(
     Some(date)
 }
 
-fn is_supported_image(path: &Path) -> bool {
+fn is_decodable_screenshot(path: &Path, extension: &str) -> bool {
     let Ok(bytes) = fs::read(path) else {
         return false;
     };
-    let png = bytes.starts_with(b"\x89PNG\r\n\x1a\n");
-    let jpeg = bytes.len() >= 4
-        && bytes[0] == 0xff
-        && bytes[1] == 0xd8
-        && bytes[2] == 0xff
-        && bytes.ends_with(&[0xff, 0xd9]);
-    png || jpeg
+    let format = match extension {
+        "png" => ImageFormat::Png,
+        "jpg" | "jpeg" => ImageFormat::Jpeg,
+        _ => return false,
+    };
+
+    // Fully decode the declared image format. This validates the stream rather
+    // than accepting a filename or a handful of magic bytes as a screenshot.
+    image::load_from_memory_with_format(&bytes, format).is_ok()
 }
 
 pub fn check(metadata: &ArtifactMetadata, release: &Release, release_dir: &Path) -> GateReport {
@@ -509,7 +512,7 @@ pub fn check_with_policy(
                                 format!("{} does not exist.", raw),
                                 "Fix the path or add the screenshot file.",
                             ));
-                        } else if !is_supported_image(&path) {
+                        } else if !is_decodable_screenshot(&path, &ext) {
                             findings.push(finding(
                                 "screenshots.invalid_image",
                                 Severity::Error,

@@ -8,10 +8,10 @@
   },
   {
     "id": "release-completeness",
-    "claim": "Checks localized metadata, screenshot paths, privacy declarations, and reason codes",
+    "claim": "Checks localized metadata, decodable PNG/JPEG screenshots, privacy declarations, and reason codes",
     "where": "landing, README",
     "test": "cargo test claim_release_completeness",
-    "sandbox": "bundled sample with eight seeded release inconsistencies"
+    "sandbox": "bundled sample with seeded metadata/privacy inconsistencies plus four-byte JPEG and eight-byte PNG signature stubs"
   },
   {
     "id": "markdown-packet",

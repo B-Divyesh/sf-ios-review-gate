@@ -57,6 +57,7 @@ fn claim_identity_consistency_catches_version_build_and_bundle_id() {
 #[test]
 fn claim_release_completeness_catches_seeded_metadata_privacy_and_screenshot_errors() {
     let (mut metadata, mut release) = sample();
+    let temp = tempfile::tempdir().unwrap();
     metadata.privacy_manifest = false;
     metadata.privacy_tracking = true;
     metadata.privacy_collected_data = vec!["precise_location".into()];
@@ -68,11 +69,22 @@ fn claim_release_completeness_catches_seeded_metadata_privacy_and_screenshot_err
         .get_mut("en-US")
         .unwrap()
         .get_mut("iphone-69")
-        .unwrap()[0] = "missing.bmp".into();
+        .unwrap()
+        .splice(.., [
+            "missing.bmp".into(),
+            "truncated.jpg".into(),
+            "truncated.png".into(),
+        ]);
+    fs::write(temp.path().join("truncated.jpg"), [0xff, 0xd8, 0xff, 0xd9]).unwrap();
+    fs::write(
+        temp.path().join("truncated.png"),
+        [0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a],
+    )
+    .unwrap();
     release
         .screenshots
         .insert("fr-FR".into(), Default::default());
-    let report = check(&metadata, &release, Path::new("examples/sample"));
+    let report = check(&metadata, &release, temp.path());
     for code in [
         "privacy.manifest_missing",
         "privacy.tracking_mismatch",
@@ -88,6 +100,25 @@ fn claim_release_completeness_catches_seeded_metadata_privacy_and_screenshot_err
             "missing {code}"
         );
     }
+    let invalid_images: Vec<_> = report
+        .findings
+        .iter()
+        .filter(|item| item.code == "screenshots.invalid_image")
+        .collect();
+    assert_eq!(
+        invalid_images.len(),
+        2,
+        "both truncated image formats must HOLD"
+    );
+    for path in ["truncated.jpg", "truncated.png"] {
+        assert!(
+            invalid_images
+                .iter()
+                .any(|item| item.message.contains(path)),
+            "missing invalid-image finding for {path}"
+        );
+    }
+    assert!(!report.passed, "truncated screenshots must never PASS");
 }
 
 #[test]
