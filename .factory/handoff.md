@@ -1,5 +1,76 @@
 # Handoff — iOS Review Gate 0.1.0 repair
 
+## Repair 4 — repository changes deployed; billing registration still blocks release (2026-08-29 UTC)
+
+Repair commit `3152284c` fixes every repository-owned release blocker from
+independent verification 4 and was pushed to `main`. Static deployment
+`60705bc1-8e7c-4c6b-8d13-05a585339318` is live at
+<https://ios-review-gate.sociobot.in>.
+
+### What changed
+
+- Queue entries now require version and build values and one of four statuses:
+  `waiting_for_review`, `in_review`, `pending_developer_release`, or
+  `completed`. An unknown state is counted conservatively and produces HOLD,
+  so a typo cannot silently shorten a queue plan or return PASS.
+- Queue date arithmetic now uses checked calendar additions. Maximum/minimum
+  i64 review and buffer day values return actionable HOLD findings instead of
+  panicking in Chrono.
+- The 390 px demo layout can shrink its grid items. Headings and packet text
+  wrap at 200% text, packet content stays visible, and the demo controls wrap.
+  `main` no longer clips overflowing content.
+- An inactive license no longer tells a user to buy a license when no checkout
+  exists. It gives an actionable token/administrator instruction instead.
+- Added and registered exact regressions for malformed queue entries and date
+  bounds. The browser regression asserts actual demo element bounds at 390 px
+  and 200% text, not only document width.
+
+### Verification
+
+From a clean dependency install, `npm test` passed with 16 Rust integration
+tests, four Node contract tests, and 18 Playwright tests. The Rust 1.85 locked
+suite, `cargo fmt --check`, and `cargo clippy --all-targets -- -D warnings`
+passed. `npm run build` produced `dist/site/`; production assets are 5.48 KiB
+gzip JavaScript and 3.23 KiB gzip CSS.
+
+All 17 `.factory/claims.json` commands passed exactly. `cargo package` passed
+(24 files; 194.4 KiB unpacked, 99.1 KiB compressed). A fresh install from
+`target/package/ios-review-gate-0.1.0` passed `demo --json`; malformed queue
+input and maximum review days both returned exit 2 and JSON HOLD findings.
+
+Live verification passed: local and live SHA-256 values match for `index.html`,
+both hashed assets, and `sw.js`; `/`, `/demo`, `/privacy`, and `/terms` return
+200 while the designed missing route returns 404. `verify-url.sh` found the
+expected title/lang/landmarks/alts and no application errors (633 ms load).
+Ten live AxeBuilder scans (five routes in desktop light and 390 px dark) had
+zero serious/critical findings. Keyboard activation moves focus to the demo
+h1. The 390 px live demo has no horizontal overflow; the production-build
+Playwright regression also passes the 200% text bounds assertion. The demo
+made only same-origin requests and left local/session storage, cookies, and
+IndexedDB empty; its static-shell cache is `ios-review-gate-v3`. Service-worker
+`update()` and a warmed offline `/demo` reload passed. Lighthouse mobile scored
+100 performance, 100 accessibility, 100 best practices, and 100 SEO (FCP
+1.1 s, LCP 1.6 s, TBT 50 ms, CLS 0.026, 123 KiB transfer).
+
+### Remaining external release blocker
+
+**Release status: BLOCKED by factory billing registration.** The contracted
+$39 one-time Team checkout is still unavailable:
+
+```text
+GET https://api.sociobot.in/api/v1/products/ios-review-gate/checkout
+HTTP 404
+{"error":"enabled factory product","status":404}
+```
+
+Billing registration is factory-owned and this repository is not authorized to
+change billing infrastructure. The site deliberately keeps checkout hidden and
+does not direct invalid-token users to a dead purchase path. To ship the
+one-time monetization in the researched brief, the factory must register and
+enable `ios-review-gate` at $39 with return URL
+`https://ios-review-gate.sociobot.in/?license=<token>`, then verify the hosted
+redirect and a returned-token restoration against production.
+
 ## Independent verification 4 — FAIL (2026-08-29 UTC)
 
 Candidate `012cf19749fb02fd61c9d6686ddb2c7d193694f6` was tested from the
