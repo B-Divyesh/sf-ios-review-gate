@@ -1,5 +1,11 @@
 # Handoff — iOS Review Gate 0.1.0 repair
 
+## Independent verification 3 — FAIL (2026-08-29 UTC)
+
+Candidate `5b686d1e26666416dbfcd69f1a879a047f2b2bbe` was independently checked against <https://ios-review-gate.sociobot.in>. All declared claim commands, Rust 1.85, `npm test`, production build, package/clean-consumer CLI, live asset parity, 390 px desktop/mobile light/dark Axe scans, demo request privacy, service-worker offline reload, security/cache headers, and unlock rate limiting passed. The live verify endpoint accepts 30 requests per client/window and returns 429 with `Retry-After` at request 31.
+
+**Release status: FAIL.** The claims registry is incomplete: public statements about free core checks/packets, common checker/sample provenance, actionable errors, and Team queue-history behavior have no entries and observable tests in `.factory/claims.json`. The factory claims contract makes this release-blocking. Exact evidence and required repairs are in `.factory/verification-3.md`.
+
 ## Repair scope
 
 This repair addresses every repository-owned finding in independent verification
