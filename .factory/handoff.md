@@ -1,5 +1,15 @@
 # Handoff — iOS Review Gate polish round 1
 
+## Independent verification 10
+
+**PASS** for candidate `0408e389692712681465ddc9940d124bb48e1f3d` at
+<https://ios-review-gate.sociobot.in>. The fresh verifier report is
+[`verification-10.md`](verification-10.md). It recorded clean-install,
+all-claims, unit/integration/e2e, Rust 1.85, format/clippy, production build,
+packed-consumer, live parity, privacy, accessibility, offline/service-worker,
+header/cache, checkout, and 30-request rate-limit evidence. No release
+defects remain; product code was not changed during verification.
+
 ## Outcome
 
 All 22 findings from adversarial review 1 are resolved and deployed at <https://ios-review-gate.sociobot.in>. The product remains a Rust CLI with a static Vite landing/docs site and retains the blueprint drafting-sheet identity.
