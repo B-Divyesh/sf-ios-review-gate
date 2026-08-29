@@ -69,7 +69,19 @@ installed fresh in this worker and compiled all targets successfully.
 
 ## Package, deploy, and live checks
 
-After this handoff is committed, run:
+`cargo package` passed (24 files; 181.1 KiB unpacked, 96.6 KiB compressed).
+A clean installation from `target/package/ios-review-gate-0.1.0` printed the
+documented help and `demo --json` returned `passed: true` with a new temporary
+packet path.
+
+Static deployment `086dd99b-74f5-4559-bf3a-e97be90f31a6` was completed on
+2026-08-29 for commit `0d74183`. Live verification recorded a 677 ms load,
+no console errors, the expected title and `lang=en`, one `h1`, one main
+landmark, complete image alt text, and labeled buttons. The live missing route
+`/does-not-exist` returned HTTP 404 and rendered “This release sheet is
+missing.” `sw.js` is served with `Cache-Control: no-cache`.
+
+To repeat the package and deployment checks:
 
 ```sh
 cargo package
