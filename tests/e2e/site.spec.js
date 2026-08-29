@@ -344,6 +344,10 @@ test('@claim:team-policy-download writes the licensed policy settings', async ({
   await page.getByLabel('Policy name').fill('Mobile release');
   await page.getByLabel('Active submission limit').fill('7');
   await expect(page.getByRole('group', { name: 'Approved reason codes' })).toBeVisible();
+  await expect(page.locator('input[name="reason"]')).toHaveCount(4);
+  for (const label of ['DiskSpace E174.1', 'FileTimestamp C617.1', 'SystemBootTime 35F9.1', 'UserDefaults CA92.1']) {
+    await expect(page.getByLabel(label)).toBeChecked();
+  }
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations.filter(v => ['serious', 'critical'].includes(v.impact))).toEqual([]);
   await page.getByLabel('SystemBootTime 35F9.1').uncheck();

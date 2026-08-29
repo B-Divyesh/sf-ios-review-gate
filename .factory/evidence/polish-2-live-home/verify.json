@@ -1,0 +1,14 @@
+{
+  "url": "https://ios-review-gate.sociobot.in",
+  "loadMs": 942,
+  "errors": [],
+  "a11y": {
+    "title": "iOS Review Gate — check a release before review",
+    "lang": "en",
+    "h1": 1,
+    "main": true,
+    "imgsMissingAlt": 0,
+    "buttonsUnlabeled": 0,
+    "textLength": 2075
+  }
+}

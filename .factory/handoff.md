@@ -1,50 +1,24 @@
-# Handoff — adversarial first-read review 2
+# Handoff — polish round 2
 
 ## Outcome
 
-Review 2 is complete for candidate
-`d168878a6108510408f1c447c605610d33e22f19` and the matching deployment at
-<https://ios-review-gate.sociobot.in>.
+All findings from `review-1.md` and `review-2.md` are resolved and deployed at <https://ios-review-gate.sociobot.in>. The Rust CLI and static Vite site remain the original artifact and deployment classes. No known gap remains.
 
-Verdict: **FAIL**. The complete evidence and fixes are in
-[`review-2.md`](review-2.md).
+The repair preserves the warm drafting-sheet identity. It adds race-safe demo isolation, a real rule-code policy builder, complete claim coverage, and one shared built shell for routed pages and the 404.
 
-No product code was changed. This work order only adds the review and replaces
-the handoff with the current review result.
+## What changed
 
-## Findings left for the repair round
+- Demo entry now aborts pending license verification and rejects stale asynchronous writes with a route-generation guard.
+- Team buyers can choose all four reason codes from bundled `apple-2026.1`; the downloaded YAML passes the real CLI.
+- Claims now cover the exact 1320×2868 sample and the generated version/build footer. There are 25 registered claims.
+- Footer version comes from `Cargo.toml`; its build identifier comes from the deployed Git commit.
+- The Vite-built 404 shares navigation, footer, styling, metadata, and accessibility behavior with the SPA.
+- The last decorative release label was removed. First-screen job, audience, action, result, and three facts still fit at 390×844 and 1440×900.
+- The catalog description is verb-first and 73 characters.
 
-1. F-2-1: a pending landing-page license response can write real license state
-   after the one-click demo banner appears.
-2. F-2-2: the paid builder promises approved-reason controls but downloads an
-   empty `approved_reason_codes` map with no such controls.
-3. F-2-3: the exact 1320×2868 sample dimension is not registered or asserted.
-4. F-2-4 / F-1-6 (reopened): footer version/build text leaves the earlier
-   unlisted-version defect unresolved.
-5. F-2-5 / F-1-16 (reopened): “RELEASE / 02.4” leaves the earlier
-   decorative-label defect partly unresolved.
+## Verification
 
-All five are blocking under the requested zero-finding, complete-claims, demo
-sandbox, and history rules.
-
-## Verification performed
-
-- Fresh live cold reads at 390×844 and 1440×900.
-- Direct and one-click demo flows, reset, seeded storage, delayed-response
-  race, request log, Cache Storage inventory, and offline reload.
-- CLI demo from a temporary directory with an unchanged sentinel.
-- Every exact command for all 23 registered claims from clean clone
-  `/tmp/ios-review-gate-review2.NsQKKK/repo`: all passed.
-- `npm test`: 17 Rust tests, five Node tests, and 23 Playwright tests passed.
-- `npm run build`, `cargo fmt --check`, and
-  `cargo clippy --all-targets --locked -- -D warnings`: passed.
-- Live route/title/metadata/404/history/link crawl and Axe scan: passed apart
-  from the documented copy/claim findings.
-- `/opt/fleet/lib/verify-url.sh`: passed with no home-page console error.
-- Live/local SHA-256 parity: matched for HTML, JS, CSS, service worker, and
-  404 page.
-
-## How to verify
+From clean clone `/tmp/ios-review-gate-polish2-claims.8kCNE3/repo`, every exact command in `.factory/claims.json` passed independently: 25 of 25.
 
 ```sh
 npm ci
@@ -53,14 +27,37 @@ npm run build
 cargo +1.85.0 test --all-targets --locked
 cargo fmt --check
 cargo clippy --all-targets --locked -- -D warnings
+cargo package --locked --allow-dirty
 ```
 
-For the key regression, seed a stored Team license, delay its verification
-response on `/`, immediately open **Try it with sample data**, and release the
-response after `/?demo=1` is visible. No real-storage key may be added or
-changed.
+- `npm test`: 18 Rust tests, 5 Node contract tests, and 24 Playwright tests passed.
+- Vite output: 20.72 KB JavaScript raw / 7.04 KB gzip; 11.17 KB CSS raw / 3.40 KB gzip.
+- Production `verify-url.sh`: 200 response, correct title and language, one h1, main landmark, no missing alt text, no unlabeled buttons, zero console errors.
+- Live routes: `/`, `/demo`, `/privacy`, and `/terms` returned 200 with unique titles and canonical URLs. A cold unknown path returned the designed page with HTTP 404 and canonical `/404`.
+- Live navigation moved focus to the new h1 and browser Back restored the prior route.
+- Live mobile/desktop first-screen fact bottoms: 826.1/844 px and 772.6/900 px. Neither viewport overflowed horizontally.
+- Live demo race: a held real-license response was released after `?demo=1`; local and session storage stayed byte-for-byte unchanged.
+- Live offline: cache `ios-review-gate-v7` contained 11 same-origin shell responses and reloaded the populated demo offline.
+- Live policy: all four bundled reason controls rendered; selected YAML contained allowed codes and omitted an unchecked code.
+- Live Lighthouse mobile: Performance 100, Accessibility 100, Best Practices 100, SEO 100; FCP 1.06 s, LCP 1.51 s, TBT 0 ms, CLS 0.026.
+- Local/live SHA-256 matched for HTML, JavaScript, CSS, service worker, and 404 output.
 
-## Known gaps
+Evidence:
 
-There are no unperformed items in the requested review. Product repair and
-deployment are intentionally outside this reviewer work order.
+- [Desktop home](evidence/polish-2-live-home/screenshot-desktop.png)
+- [Mobile home](evidence/polish-2-live-home/screenshot-mobile.png)
+- [Mobile demo](evidence/polish-2-live-demo-mobile.png)
+- [Mobile policy builder](evidence/polish-2-live-policy-mobile.png)
+- [Designed 404](evidence/polish-2-live-404.png)
+- [Verifier report](evidence/polish-2-live-home/verify.json)
+- [Finding-by-finding closure](polish-2.md)
+
+## Run and deploy
+
+Run `npm ci`, then `npm test`. Build the CLI and site with `npm run build`. The deployable static root is `dist/site`.
+
+Deployment used the work-order configuration: `npm ci && npm run build:site`, then `/opt/fleet/lib/deploy-static.sh ios-review-gate dist/site`.
+
+## Known gaps and next steps
+
+None.
