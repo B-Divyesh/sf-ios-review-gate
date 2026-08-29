@@ -14,7 +14,7 @@ The repair preserves the warm drafting-sheet identity. It adds race-safe demo is
 - Footer version comes from `Cargo.toml`; its build identifier comes from the deployed Git commit.
 - The Vite-built 404 shares navigation, footer, styling, metadata, and accessibility behavior with the SPA.
 - The last decorative release label was removed. First-screen job, audience, action, result, and three facts still fit at 390×844 and 1440×900.
-- The catalog description is verb-first and 73 characters.
+- The catalog description is verb-first and 75 characters.
 
 ## Verification
 

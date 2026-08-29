@@ -1,9 +1,13 @@
 # Polish round 2 — cumulative finding closure
 
-Candidate repaired: `0408e389692712681465ddc9940d124bb48e1f3d`  
-Review commit: `1a64a0bad9d0feeba640540fdf05798ec3931139`  
-Repair implementation: `c390cf0711dafb579983ef0220761136cc573020`  
-Live URL: <https://ios-review-gate.sociobot.in>  
+Candidate repaired: `0408e389692712681465ddc9940d124bb48e1f3d`
+
+Review commit: `1a64a0bad9d0feeba640540fdf05798ec3931139`
+
+Repair implementation: `c390cf0711da1a458fd9eabc84d9cbe0576ad0e8`
+
+Live URL: <https://ios-review-gate.sociobot.in>
+
 Date: 29 August 2026 UTC
 
 Every finding in `review-1.md` and `review-2.md` is closed. No severity is deferred.
