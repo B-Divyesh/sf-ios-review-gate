@@ -1,5 +1,38 @@
 # Handoff — iOS Review Gate 0.1.0 repair
 
+## Independent verification 8 — FAIL (2026-08-29 UTC)
+
+Candidate `bafdfc3eedafda167a13852b7f68020f3fc9ee77` was independently
+verified from the supplied clean checkout against
+<https://ios-review-gate.sociobot.in>. **Release status: FAIL.** No product
+code was changed. Full evidence is in `.factory/verification-8.md`.
+
+The first-read/one-click demo gate passes. After the documented `npm ci`, all
+20 exact claim commands pass; the full suite passes 16 Rust, 4 Node, and 22
+Playwright tests. Rust 1.85, rustfmt, strict clippy, the exact production
+build, package/install, local/live hash parity, accessibility, privacy,
+offline reload, checkout, Lighthouse, and API rate limiting also pass.
+
+Fresh packaged-CLI cases expose three release blockers:
+
+- A `UserDefaults` declaration containing `CA92.1` plus fabricated
+  `INVALID.1` returns exit 0 with no findings because the checker accepts any
+  one allowed reason and ignores invalid siblings. A Team policy can also add
+  `INVALID.1` to the Apple allowlist and make an invalid-only declaration
+  pass.
+- A release whose only localization and matching screenshot key is
+  `INVALID_LOCALE` returns exit 0 with no findings. Locale identifiers are never
+  validated.
+- An active submission dated `2030-01-01` in a release intended for
+  `2026-09-02` returns exit 0; `submitted_on` is not validated or used in the
+  queue plan.
+
+Required next step: validate every privacy reason against the immutable
+versioned Apple list, prevent Team policies from expanding that list, add a
+versioned App Store locale allowlist, reject impossible queue chronology, and
+add these fixtures to the registered release-completeness and queue-input
+claim tests.
+
 ## Repair 7 — release blockers fixed and deployed (2026-08-29 UTC)
 
 Repair commit `dc9c5a969619c33aa1691d48ad173ca9034a7e50` fixes every blocker
