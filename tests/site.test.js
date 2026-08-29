@@ -27,4 +27,6 @@ test('factory contracts and static host configuration are valid JSON', async () 
   assert.ok(claims.length >= 1);
   assert.equal(new Set(claims.map(claim => claim.id)).size, claims.length);
   assert.equal(host.navigationFallback.rewrite, '/index.html');
+  assert.deepEqual(host.responseOverrides['404'], { rewrite: '/404.html', statusCode: 404 });
+  await stat('site/public/404.html');
 });

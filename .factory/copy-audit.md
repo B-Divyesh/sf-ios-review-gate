@@ -10,7 +10,7 @@ Audited 2026-08-28 against the plain-words rules. Counts treat hyphenated terms 
 | 7 | See a checked release and its packet. |
 | 4 | Runs on your machine. |
 | 4 | No App Store access. |
-| 5 | $39 once for Team rules. |
+| 5 | Free checks and packets. |
 | 15 | An exploded drafting view connects an app archive, metadata sheets, screenshots, and a review queue. |
 | 9 | The same checker powers the command and the sample. |
 | 8 | Errors name the mismatch and the next fix. |
@@ -25,8 +25,8 @@ Audited 2026-08-28 against the plain-words rules. Counts treat hyphenated terms 
 | 9 | It has no telemetry and sends no release data. |
 | 13 | It does not upload builds, scrape App Store Connect, or predict Apple's decision. |
 | 9 | The free gate includes every core check and packet export. |
-| 12 | Team adds a local policy builder and queue histories beyond three submissions. |
-| 2 | One-time purchase. |
+| 14 | A Team license adds a local policy builder and queue histories beyond three submissions. |
+| 8 | Team checkout is not available right now. |
 | 3 | Have a license? |
 | 3 | Paste it here. |
 | 6 | Sociobot is the merchant of record. |

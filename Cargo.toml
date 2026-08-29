@@ -2,6 +2,7 @@
 name = "ios-review-gate"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.85"
 description = "Check an iOS release and print a dated App Review packet"
 license = "MIT"
 repository = "https://github.com/B-Divyesh/sf-ios-review-gate"

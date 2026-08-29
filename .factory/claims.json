@@ -50,10 +50,17 @@
   },
   {
     "id": "browser-demo-local",
-    "claim": "The browser demo saves nothing and sends no cross-origin requests",
+    "claim": "The browser demo saves no personal release data and sends no cross-origin requests",
     "where": "demo banner and privacy page",
     "test": "npm run build:site && npx playwright test --grep @claim:browser-demo-local",
     "sandbox": "fresh browser context with every request recorded"
+  },
+  {
+    "id": "rust-msrv",
+    "claim": "Builds with Rust 1.85 or newer",
+    "where": "README",
+    "test": "cargo +1.85.0 test --all-targets --locked",
+    "sandbox": "clean Rust 1.85.0 toolchain and locked dependency graph"
   },
   {
     "id": "license-restore",

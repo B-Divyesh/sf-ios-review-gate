@@ -70,6 +70,52 @@ fn claim_release_completeness_catches_seeded_metadata_privacy_and_screenshot_err
 }
 
 #[test]
+fn invalid_identity_images_and_queue_durations_cannot_pass() {
+    let (mut metadata, mut release) = sample();
+    metadata.bundle_id.clear();
+    metadata.version.clear();
+    metadata.build.clear();
+    release.app_name.clear();
+    release.bundle_id.clear();
+    release.version.clear();
+    release.build.clear();
+    release.submitted_by.clear();
+    release.queue.typical_review_days = -5;
+    release.queue.buffer_days = -7;
+
+    let temp = tempfile::tempdir().unwrap();
+    let screenshot = temp.path().join("home.jpg");
+    fs::write(&screenshot, []).unwrap();
+    release
+        .screenshots
+        .get_mut("en-US")
+        .unwrap()
+        .get_mut("iphone-69")
+        .unwrap()[0] = "home.jpg".into();
+
+    let report = check(&metadata, &release, temp.path());
+    assert!(!report.passed);
+    for code in [
+        "identity.app_name_missing",
+        "identity.owner_missing",
+        "identity.bundle_id_missing",
+        "identity.version_missing",
+        "identity.build_missing",
+        "identity.release_bundle_id_missing",
+        "identity.release_version_missing",
+        "identity.release_build_missing",
+        "screenshots.invalid_image",
+        "queue.review_days_negative",
+        "queue.buffer_days_negative",
+    ] {
+        assert!(
+            report.findings.iter().any(|item| item.code == code),
+            "missing {code}"
+        );
+    }
+}
+
+#[test]
 fn team_policy_extends_reason_codes_and_queue_history() {
     let (mut metadata, mut release) = sample();
     metadata.accessed_apis[0].reasons = vec!["TEAM.1".into()];

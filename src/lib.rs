@@ -174,6 +174,30 @@ fn finding(
     }
 }
 
+fn required_value(findings: &mut Vec<Finding>, code: &str, label: &str, value: &str, fix: &str) {
+    if value.trim().is_empty() {
+        findings.push(finding(
+            code,
+            Severity::Error,
+            format!("{label} is required and cannot be blank."),
+            fix,
+        ));
+    }
+}
+
+fn is_supported_image(path: &Path) -> bool {
+    let Ok(bytes) = fs::read(path) else {
+        return false;
+    };
+    let png = bytes.starts_with(b"\x89PNG\r\n\x1a\n");
+    let jpeg = bytes.len() >= 4
+        && bytes[0] == 0xff
+        && bytes[1] == 0xd8
+        && bytes[2] == 0xff
+        && bytes.ends_with(&[0xff, 0xd9]);
+    png || jpeg
+}
+
 pub fn check(metadata: &ArtifactMetadata, release: &Release, release_dir: &Path) -> GateReport {
     check_with_policy(metadata, release, release_dir, None)
 }
@@ -186,6 +210,60 @@ pub fn check_with_policy(
 ) -> GateReport {
     let mut findings = Vec::new();
     let rules = official_rules();
+    required_value(
+        &mut findings,
+        "identity.app_name_missing",
+        "App name",
+        &release.app_name,
+        "Set app_name in release.yaml.",
+    );
+    required_value(
+        &mut findings,
+        "identity.owner_missing",
+        "Release owner",
+        &release.submitted_by,
+        "Set submitted_by in release.yaml.",
+    );
+    for (code, label, value) in [
+        (
+            "identity.bundle_id_missing",
+            "Artifact bundle ID",
+            metadata.bundle_id.as_str(),
+        ),
+        (
+            "identity.version_missing",
+            "Artifact version",
+            metadata.version.as_str(),
+        ),
+        (
+            "identity.build_missing",
+            "Artifact build",
+            metadata.build.as_str(),
+        ),
+        (
+            "identity.release_bundle_id_missing",
+            "Release bundle ID",
+            release.bundle_id.as_str(),
+        ),
+        (
+            "identity.release_version_missing",
+            "Release version",
+            release.version.as_str(),
+        ),
+        (
+            "identity.release_build_missing",
+            "Release build",
+            release.build.as_str(),
+        ),
+    ] {
+        required_value(
+            &mut findings,
+            code,
+            label,
+            value,
+            "Set this identity value in both the artifact export and release.yaml.",
+        );
+    }
     if metadata.bundle_id != release.bundle_id {
         findings.push(finding(
             "identity.bundle_id",
@@ -307,22 +385,22 @@ pub fn check_with_policy(
                     format!("{} has no {}.", locale, name),
                     format!("Add {} for {}.", name, locale),
                 ));
-            } else if let Some(limit) = rules.localized_field_limits.get(name)
-                && value.chars().count() > *limit
-            {
-                findings.push(finding(
-                    "locales.field_too_long",
-                    Severity::Error,
-                    format!(
-                        "{} {} has {} characters; the {} limit is {}.",
-                        locale,
-                        name,
-                        value.chars().count(),
-                        RULESET,
-                        limit
-                    ),
-                    format!("Shorten {} to {} characters or fewer.", name, limit),
-                ));
+            } else if let Some(limit) = rules.localized_field_limits.get(name) {
+                if value.chars().count() > *limit {
+                    findings.push(finding(
+                        "locales.field_too_long",
+                        Severity::Error,
+                        format!(
+                            "{} {} has {} characters; the {} limit is {}.",
+                            locale,
+                            name,
+                            value.chars().count(),
+                            RULESET,
+                            limit
+                        ),
+                        format!("Shorten {} to {} characters or fewer.", name, limit),
+                    ));
+                }
             }
         }
         match release.screenshots.get(locale) {
@@ -386,6 +464,13 @@ pub fn check_with_policy(
                                 format!("{} does not exist.", raw),
                                 "Fix the path or add the screenshot file.",
                             ));
+                        } else if !is_supported_image(&path) {
+                            findings.push(finding(
+                                "screenshots.invalid_image",
+                                Severity::Error,
+                                format!("{} is not a readable PNG or JPEG image.", raw),
+                                "Export a complete PNG or JPEG screenshot and replace this file.",
+                            ));
                         }
                     }
                 }
@@ -436,13 +521,29 @@ pub fn check_with_policy(
             "Confirm whether to finish or remove the active submission before queuing this build.",
         ));
     }
-    let review_days = release.queue.typical_review_days.max(0);
+    if release.queue.typical_review_days < 0 {
+        findings.push(finding(
+            "queue.review_days_negative",
+            Severity::Error,
+            "Typical review days cannot be negative.",
+            "Set typical_review_days to zero or a positive number.",
+        ));
+    }
+    if release.queue.buffer_days < 0 {
+        findings.push(finding(
+            "queue.buffer_days_negative",
+            Severity::Error,
+            "Buffer days cannot be negative.",
+            "Set buffer_days to zero or a positive number.",
+        ));
+    }
+    let review_days = release.queue.typical_review_days;
     let estimated_decision = release.intended_submission
         + Duration::days(review_days.saturating_mul(active_count as i64 + 1));
     let queue = QueuePlan {
         intended_submission: release.intended_submission,
         estimated_decision,
-        buffered_decision: estimated_decision + Duration::days(release.queue.buffer_days.max(0)),
+        buffered_decision: estimated_decision + Duration::days(release.queue.buffer_days),
         active_submissions: active_count,
     };
     let errors = findings

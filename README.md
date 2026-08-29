@@ -79,7 +79,7 @@ Build only the deployable site with `npm run build:site`. Build only the release
 
 ## Privacy and price
 
-The CLI has no telemetry and makes no network requests. Inputs and packets remain on your machine. The free checker and packet export remain available. A $39 one-time Team license adds shared custom policy files and longer queue histories; checkout and license verification use Sociobot's billing API.
+The CLI has no telemetry and makes no network requests. Inputs and packets remain on your machine. The free checker and packet export remain available. An existing Team license adds shared custom policy files and longer queue histories; license verification uses Sociobot's billing API. Team checkout is not available from this site right now.
 
 Pass a Team policy from the website builder with `--policy team-policy.yaml`. See [`examples/team-policy.yaml`](examples/team-policy.yaml) for the file shape.
 

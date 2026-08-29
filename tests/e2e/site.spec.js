@@ -8,15 +8,27 @@ test('@claim:one-click-demo opens a complete sample in one click', async ({ page
   await expect(page.getByRole('heading', { level: 1, name: 'Inspect a complete sample release' })).toBeVisible();
   await expect(page.getByText('Harbor Log 2.4.0', { exact: true })).toBeVisible();
   await expect(page.getByText('PASS', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible();
+  await expect(page.getByText('Demo — no personal data is saved')).toBeVisible();
 });
 
-test('@claim:browser-demo-local sends no cross-origin requests', async ({ page }) => {
+test('@claim:browser-demo-local saves no personal release data and sends no cross-origin requests', async ({ page }) => {
   const crossOrigin = [];
   page.on('request', request => { if (new URL(request.url()).origin !== 'http://127.0.0.1:4173') crossOrigin.push(request.url()); });
   await page.goto('/demo');
   await page.getByRole('button', { name: 'Reset demo' }).click();
+  const storage = await page.evaluate(async () => ({
+    local: Object.keys(localStorage),
+    session: Object.keys(sessionStorage),
+    cookies: document.cookie,
+    databases: (await indexedDB.databases()).map(database => database.name),
+    caches: (await caches.keys()).sort(),
+  }));
   expect(crossOrigin).toEqual([]);
+  expect(storage.local).toEqual([]);
+  expect(storage.session).toEqual([]);
+  expect(storage.cookies).toBe('');
+  expect(storage.databases).toEqual([]);
+  expect(storage.caches).toEqual(['ios-review-gate-v3']);
 });
 
 test('routes expose one h1, titles, keyboard focus, and no serious axe findings', async ({ page }) => {
@@ -56,7 +68,7 @@ test('dark mobile demo banner has readable controls and no serious axe findings'
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.goto('/demo');
   const banner = page.getByLabel('Demo mode');
-  await expect(banner).toContainText('Demo — sample data, nothing is saved');
+  await expect(banner).toContainText('Demo — no personal data is saved');
   await expect(page.getByRole('button', { name: 'Reset demo' })).toBeVisible();
   await expect(page.getByRole('link', { name: 'Start for real' })).toBeVisible();
   const results = await new AxeBuilder({ page }).analyze();
@@ -68,7 +80,7 @@ test('warmed demo reloads offline with its cached app shell', async ({ page, con
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await expect.poll(() => page.evaluate(async () => {
-    const cache = await caches.open('ios-review-gate-v2');
+    const cache = await caches.open('ios-review-gate-v3');
     const paths = (await cache.keys()).map(request => new URL(request.url).pathname);
     return paths.some(path => /^\/assets\/index-.+\.js$/.test(path))
       && paths.some(path => /^\/assets\/index-.+\.css$/.test(path));
@@ -95,6 +107,30 @@ test('mobile layout keeps the first action visible and avoids horizontal scroll'
   await expect(page.getByRole('link', { name: 'Try it with sample data' })).toBeVisible();
   const widths = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
   expect(widths.scroll).toBe(widths.client);
+});
+
+test('mobile 200% text reflows navigation without overflow and all links meet the touch baseline', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const path of ['/', '/demo', '/privacy', '/terms']) {
+    await page.goto(path);
+    await page.addStyleTag({ content: 'html { font-size: 200% !important; }' });
+    const widths = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+    expect(widths.scroll, path).toBe(widths.client);
+    const targets = await page.locator('a, button, input').evaluateAll(elements => elements.map(element => {
+      const box = element.getBoundingClientRect();
+      return { label: element.getAttribute('aria-label') || element.textContent.trim() || element.id, width: box.width, height: box.height };
+    }));
+    for (const target of targets) {
+      expect(target.width, `${path}: ${target.label}`).toBeGreaterThanOrEqual(44);
+      expect(target.height, `${path}: ${target.label}`).toBeGreaterThanOrEqual(44);
+    }
+  }
+});
+
+test('the deployable not-found page has a designed recovery route and a real 404 override', async ({ page }) => {
+  await page.goto('/404.html');
+  await expect(page.getByRole('heading', { level: 1, name: 'This release sheet is missing' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Return to the gate' })).toBeVisible();
 });
 
 test('public artwork loads and the page reports no browser errors', async ({ page }) => {
