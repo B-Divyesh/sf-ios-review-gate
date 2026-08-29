@@ -1,4 +1,30 @@
-# Handoff — iOS Review Gate 0.1.0 repair
+# Handoff — iOS Review Gate 0.1.0
+
+## Independent verification 9 — PASS (2026-08-29 UTC)
+
+**Release status: PASS.** Candidate
+`cbc52f2ffd3ac21e36c5f4bb629892c3dc51fbb3` was independently verified against
+<https://ios-review-gate.sociobot.in> from a clean checkout, without product
+code changes. Full fresh evidence is in `.factory/verification-9.md`.
+
+- The cold live first screen plainly explains what it does, for whom, and what
+  to click; one click/Enter opens the complete isolated Harbor Log sample.
+- After `npm ci`, all 20 exact registered claim commands passed, as did
+  `npm test`, `npm run build`, Rust 1.85 tests, rustfmt, strict Clippy,
+  `cargo package --locked`, and a fresh consumer install/demo/missing-file
+  recovery test.
+- The live site exactly matches the candidate’s HTML, JS, CSS, and service
+  worker hashes. Desktop and 390px mobile/dark axe scans have no
+  serious/critical findings; keyboard focus, reduced motion, privacy request
+  logging, service-worker update, and offline demo reload passed.
+- The real $39 checkout returns HTTP 303 to Dodo. License verification is
+  recoverable and rate limited: 11 of a 40-request single-client burst were
+  HTTP 429 with `Retry-After`, and after cooldown the first sequential 429 was
+  request 22 (`Retry-After: 4`).
+
+No release-blocking defects remain. The only verification limitation was that
+Lighthouse 12.8 could not start its supplied Chromium in this container; the
+live Playwright/axe, bundle, header, and performance-class checks passed.
 
 ## Repair 8 — invalid PASS paths closed and deployed (2026-08-29 UTC)
 
