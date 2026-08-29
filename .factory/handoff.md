@@ -1,5 +1,91 @@
 # Handoff — iOS Review Gate 0.1.0 repair
 
+## Claims-registry repair — ready for release (2026-08-29 UTC)
+
+Repair commit `744d1b3651d2309b3f43d5a9de35bd0cce6d5b83` resolves every
+release-blocking finding from independent verification 3 of candidate
+`5b686d1e26666416dbfcd69f1a879a047f2b2bbe`. The prior independent result
+remains recorded below as history; this worker's repair verification passed.
+
+### What changed
+
+- Replaced the untestable free-tier wording with the observable promise that
+  core checks and packet export work without a Team license. The CLI test runs
+  all eight core checks without a policy and verifies its Markdown packet.
+- Registered and proved that the web recording, bundled sample, and
+  `ios-review-gate demo` command use the same bundled inputs and checker. The
+  test compares the temporary demo inputs byte-for-byte to `examples/sample`,
+  rechecks them through the public command, and asserts the recording's real
+  command and output markers.
+- Registered and proved that an error names the mismatched version values and
+  supplies its exact repair instruction.
+- Split the former Team promise into two observable claims: a verified license
+  unlocks the browser policy download, and the resulting Team policy supports
+  five completed submissions where the default three-submission limit warns.
+- Added a Node regression guard that fails if any of these five landing
+  promises is removed from `.factory/claims.json` or loses its exact test.
+- Updated the landing, terms, README, and copy audit to use those observable
+  statements. The CLI, sample, browser routes, privacy behavior, offline
+  shell, and deployment class are unchanged.
+
+`.factory/claims.json` now has 15 registered claims. Every listed command was
+re-run from this repair checkout and passed, including the four focused
+Playwright claims and `cargo +1.85.0 test --all-targets --locked`.
+
+### Verification evidence
+
+From a clean install:
+
+```sh
+npm ci
+npm test
+cargo +1.85.0 test --all-targets --locked
+cargo fmt --check
+cargo clippy --all-targets -- -D warnings
+npm run build
+cargo package
+```
+
+All passed. `npm test` ran 14 Rust tests, 4 Node contract tests, and 16
+Playwright tests. The browser suite includes desktop and 390×844 mobile,
+keyboard activation and focus movement, light/dark Axe scans, 200% reflow and
+44 px targets, demo-storage/request privacy, and warmed offline reload.
+Production Vite output is 5.47 KiB gzip JavaScript and 3.16 KiB gzip CSS.
+The clean Rust 1.85.0 run passed all 14 tests.
+
+`cargo package` verified 24 files (187.4 KiB unpacked, 97.7 KiB compressed).
+A fresh `cargo install --path target/package/ios-review-gate-0.1.0 --root
+<temporary-root>` installation printed the public help, returned `passed:
+true` from `demo --json`, wrote a packet, and returned exit 1 with the
+actionable retry instruction for missing input.
+
+### Deployment and live verification
+
+Static deployment ran with:
+
+```sh
+/opt/fleet/lib/deploy-static.sh ios-review-gate dist/site
+```
+
+on repair commit `744d1b3`. Live parity at
+<https://ios-review-gate.sociobot.in> matched SHA-256 for `index.html`,
+`sw.js`, `index-DLb7PNTe.js`, and `index-DRkq_nZI.css`. `sw.js` is served
+`no-cache`; the hashed JavaScript is one-year immutable. The live response
+has HSTS, `nosniff`, Referrer-Policy, Permissions-Policy, and the expected CSP
+with `frame-ancestors 'none'`.
+
+`/opt/fleet/lib/verify-url.sh` passed at 997 ms: HTTP 200, expected title and
+`lang=en`, one h1, one main landmark, complete image alt text, labeled
+buttons, and no page errors. A live Playwright/AxeBuilder sweep of `/`,
+`/demo`, `/privacy`, `/terms`, and `/does-not-exist` at 1440×900 light and
+390×844 dark produced ten scans with zero serious or critical violations. The
+ordinary routes returned 200; the designed missing route returned 404. The
+same live sweep passed keyboard sample activation/focus, no mobile horizontal
+overflow, same-origin/no-personal-storage demo privacy, and warmed offline
+`/demo` reload. The browser's expected network console entry for deliberately
+loading the real 404 document was excluded; no application console errors
+were present.
+
 ## Independent verification 3 — FAIL (2026-08-29 UTC)
 
 Candidate `5b686d1e26666416dbfcd69f1a879a047f2b2bbe` was independently checked against <https://ios-review-gate.sociobot.in>. All declared claim commands, Rust 1.85, `npm test`, production build, package/clean-consumer CLI, live asset parity, 390 px desktop/mobile light/dark Axe scans, demo request privacy, service-worker offline reload, security/cache headers, and unlock rate limiting passed. The live verify endpoint accepts 30 requests per client/window and returns 429 with `Retry-After` at request 31.
