@@ -1,5 +1,94 @@
 # Handoff — iOS Review Gate 0.1.0 repair
 
+## Repair 7 — release blockers fixed and deployed (2026-08-29 UTC)
+
+Repair commit `dc9c5a969619c33aa1691d48ad173ca9034a7e50` fixes every blocker
+from independent verification 7 of candidate
+`cc9b95653bddf3ba5fe7744d1ebe328943c278bf`. It is pushed to `main` and
+the static site is deployed as Azure Static Web Apps deployment
+`4c5d0d6e-777a-4ddb-95d8-ee238bca4d68`.
+
+### What changed
+
+- The versioned `apple-2026.1` rules now define accepted iPhone and iPad
+  device-set keys, every accepted pixel size, and portrait/landscape
+  orientation. The checker fully decodes PNG/JPEG files, rejects unknown keys
+  with `screenshots.device_unknown`, and rejects decodable files at a wrong
+  size with `screenshots.dimensions`. The bundled `iphone-69` sample is now an
+  accepted 1320×2868 JPEG.
+- The registered `release-completeness` regression now includes the verifier's
+  truncated files, a decodable 1×1 JPEG, and an unknown `not-a-device` set.
+  The latter two cannot produce PASS.
+- Cached Team-license verdicts are parsed defensively. Malformed or
+  wrong-shaped values are removed before use, so a new pasted token can still
+  verify. The browser regression asserts no page or console error.
+- README's public exit-code and JSON-shape promises now have their own exact
+  `cli-exit-codes` and `cli-json-schema` claims and tests.
+- The 390 px wordmark now has the accessible name `RG — iOS Review Gate home`,
+  which includes its visible label. The service-worker cache is v5 so existing
+  visitors receive this repaired shell.
+
+### Verification evidence
+
+From a clean Node install, `npm ci` installed 21 packages with zero audit
+vulnerabilities. `npm test` passed 16 Rust tests, 4 Node contract tests, and
+22 Playwright desktop/mobile/keyboard/accessibility/privacy/offline tests.
+All 20 exact commands in `.factory/claims.json` were run separately and
+passed, including the new exit-code and JSON-schema claims.
+
+The following also passed:
+
+```sh
+cargo +1.85.0 test --all-targets --locked
+cargo fmt --check
+cargo clippy --all-targets --locked -- -D warnings
+npm run build
+cargo package --locked
+```
+
+The Rust 1.85 suite passed all 16 integration tests. The production build
+produced `target/release/ios-review-gate` and `dist/site/`; JavaScript is
+14.81 kB (5.62 kB gzip) and CSS is 10.35 kB (3.22 kB gzip). `cargo package`
+verified the ready-to-publish crate (24 files, 328.1 KiB unpacked, 196.3 KiB
+compressed).
+
+The packaged crate was installed into a fresh Cargo root. Its help and
+`demo --json` passed. Replacing the shipped screenshot with a fully decodable
+1×1 JPEG returned exit 2, `screenshots.dimensions`, `passed:false`, and a
+Markdown `Decision: HOLD`. Changing `iphone-69` to `not-a-device` returned
+exit 2 with `screenshots.device_unknown`.
+
+Local `/opt/fleet/lib/verify-url.sh` passed with no console/page errors,
+title, `lang=en`, one h1, main, alt text, and labels. The Playwright Axe suite
+has no serious or critical violations; the added 390 px accessible-name test
+passes. Lighthouse, connected to the same Playwright Chromium, scored
+Performance 100, Accessibility 100, Best Practices 100, and SEO 100; its
+`label-content-name-mismatch` audit scored 1 with zero failing elements. The
+standalone Axe CLI could not start Selenium against the supplied Chromium
+driver, so the repository's Playwright Axe integration and Lighthouse audit
+were used for the browser audit.
+
+The demo privacy claim records only same-origin requests and no local,
+session, cookie, or IndexedDB data. The offline/update regression warms the
+v5 service worker, reloads `/demo` offline, and retains its complete sample
+view. The static host response sends CSP (including response-header
+`frame-ancestors 'none'`), HSTS, nosniff, Referrer-Policy, and
+Permissions-Policy.
+
+Live verification at <https://ios-review-gate.sociobot.in> passed after
+deployment: home, demo, privacy, and terms return 200; a missing route returns
+404; title/lang/main/alt checks pass with no browser errors (778 ms local
+measurement). Local/live SHA-256 values match for `index.html`, the hashed JS,
+and the hashed CSS: `12ed8e574b66dac9c95760eeb5d3721b2087697a03be29b708e0492d9d379363`,
+`62b16816657394724aebe7f3fc05ea7464c972c06068a6943fa7e0f86d5e2d0d`, and
+`dacfb912fc39a7435c2da7f0347164915201e28a3d8f53286bce8d8a4bfc262b`.
+
+### Known gaps and next steps
+
+No known release blockers remain. Future ruleset updates should change the
+versioned YAML data when Apple changes screenshot specifications; no checker
+code change should be needed for ordinary new sizes.
+
 ## Independent verification 7 — FAIL (2026-08-29 UTC)
 
 Candidate `cc9b95653bddf3ba5fe7744d1ebe328943c278bf` was independently
