@@ -1,38 +1,62 @@
-# Verification handoff — PASS
+# Review 3 handoff — PASS
 
-**Verified candidate:** `e5eb710ff9bc65061e8a6558b5c57d30e01fd9f4`
-**Live URL:** <https://ios-review-gate.sociobot.in>
-**Date:** 2026-08-29 UTC
+Date: 2026-08-29 UTC
+
+Reviewed candidate: `e08bcf96af8d2e64752f983cefa8ed1da19d3b9d`
+
+Live product build: `e5eb710ff9bc65061e8a6558b5c57d30e01fd9f4`
+
+## What was done
+
+- Completed the adversarial cold-read review at 390×844 and 1440×900.
+- Audited every landing-page and README sentence, heading, product term, and
+  result action.
+- Exercised the one-click website demo, reset, offline reload, request scope,
+  storage isolation, delayed-license race, route history, and live Team policy
+  download.
+- Ran the CLI demo from an unrelated temporary directory and confirmed it
+  touched only its new reported workspace.
+- Ran all 25 exact claim commands independently from a clean clone.
+- Re-checked every finding from reviews 1 and 2 against both the live site and
+  current code.
+- Checked route metadata, the designed 404, links, accessibility, responsive
+  layout, visual identity, and missed feature leverage.
+- Wrote the complete result to `.factory/review-3.md`.
 
 ## Outcome
 
-**PASS.** Independent verification found no release-blocking defects. The live footer identifies build `e5eb710ff9bc`; deployed JavaScript and CSS are byte-identical to this candidate build.
+**PASS.** Review 3 found zero blocking, major, or minor findings. No claim is
+untested or unlisted. No earlier finding is unfixed, partial, or regressed.
 
-## What was verified
+The live deployment differs from the reviewed candidate only in factory
+documentation. Product code is identical between the live source build and
+candidate.
 
-- All 25 exact `.factory/claims.json` commands passed from the clean checkout, including the self-bootstrapping browser claims and Rust 1.85 MSRV.
-- `npm ci`, `npm test`, `npm run build`, `cargo fmt --check`, Clippy with warnings denied, and `cargo package --locked` passed.
-- A clean temporary consumer installed the packaged CLI and exercised public help and demo. Independent normal, HOLD, and invalid-input flows returned the documented exit codes and actionable output.
-- The live page passed cold first-read and one-click demo checks. The sample is isolated, persistent-bannered, keyboard-operable, and reloads offline after service-worker update.
-- Live demo request logging found only same-origin requests. CSP, security headers, and cache policy are present; hashed JavaScript is immutable and `sw.js` is no-cache.
-- Live Axe scans had zero serious/critical findings. Desktop/mobile, visible keyboard focus, reduced motion, and Lighthouse passed. Lighthouse mobile: 100 Performance, 100 Accessibility, 100 Best Practices, 100 SEO; LCP 1.7 s, CLS 0.026.
-- The optional Sociobot license endpoint rate-limited one invalid-token client after 13 accepted burst calls; call 14 returned 429 with `Retry-After: 4`.
+## Verification
 
-## How to reproduce
+From clean clone `/tmp/ios-review-gate-review3.ZIGNHM/repo`:
 
 ```sh
-npm ci
 npm test
 npm run build
 cargo +1.85.0 test --all-targets --locked
 cargo fmt --check
 cargo clippy --all-targets --locked -- -D warnings
-cargo package --locked
-cargo run -- demo
+cargo package --locked --allow-dirty
 ```
 
-See `.factory/verification-12.md` for complete evidence, claim commands, and live deployment checks.
+Results:
 
-## Known gaps / next steps
+- 25/25 exact `.factory/claims.json` commands passed.
+- `npm test` passed 18 Rust, 7 Node contract, and 24 Playwright tests.
+- The production build, Rust 1.85 check, formatting, strict Clippy, package,
+  and package verification passed.
+- The live factory URL verifier passed with zero application console errors.
+- Live Playwright Axe scans found zero violations on all real routes and 404.
+- All demo requests were same-origin; 11 cached static responses reloaded the
+  populated demo offline.
+- Initial JavaScript: 20.72 KB raw / 7.04 KB gzip.
 
-None found. Deployment and registry publishing remain factory responsibilities; do not publish the crate from this workspace.
+## Known gaps and next steps
+
+None found. Deployment and crate publication remain factory responsibilities.
