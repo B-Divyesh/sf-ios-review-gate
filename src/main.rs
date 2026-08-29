@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use ios_review_gate::{run_files, run_files_with_policy};
+use ios_review_gate::{inspect_archive, run_archive_with_policy, run_files, run_files_with_policy};
 use std::{
     fs,
     path::PathBuf,
@@ -11,7 +11,7 @@ use std::{
 #[command(
     name = "ios-review-gate",
     version,
-    about = "Check an iOS release and print its App Review packet",
+    about = "Check an iOS release and print its Markdown review packet",
     long_about = "Compare a local archive metadata export with release.yaml. Checks version, build, localized metadata, screenshots, privacy declarations, and queue timing. No upload or App Store Connect access."
 )]
 struct Cli {
@@ -21,15 +21,22 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Check release files and optionally write a Markdown packet
+    /// Check release files and optionally write a Markdown review packet
     Check {
         /// Path to the archive metadata JSON export
-        #[arg(long)]
-        metadata: PathBuf,
+        #[arg(long, required_unless_present = "archive", conflicts_with = "archive")]
+        metadata: Option<PathBuf>,
+        /// Path to an .xcarchive directory or .ipa file
+        #[arg(
+            long,
+            required_unless_present = "metadata",
+            conflicts_with = "metadata"
+        )]
+        archive: Option<PathBuf>,
         /// Path to release.yaml
         #[arg(long)]
         release: PathBuf,
-        /// Markdown packet path
+        /// Markdown review packet path
         #[arg(short, long)]
         output: Option<PathBuf>,
         /// Optional Team policy YAML for approved reason codes and queue limits
@@ -38,6 +45,15 @@ enum Command {
         /// Print the result as JSON
         #[arg(long)]
         json: bool,
+    },
+    /// Extract identity and privacy declarations from an .xcarchive or .ipa
+    Inspect {
+        /// Path to an .xcarchive directory or .ipa file
+        #[arg(long)]
+        archive: PathBuf,
+        /// Write metadata JSON to this path instead of stdout
+        #[arg(short, long)]
+        output: Option<PathBuf>,
     },
     /// Run a complete check on bundled sample data in a temporary folder
     Demo {
@@ -51,14 +67,47 @@ fn main() -> ExitCode {
     match Cli::parse().command {
         Command::Check {
             metadata,
+            archive,
             release,
             output,
             policy,
             json,
-        } => finish(
-            run_files_with_policy(&metadata, &release, output.as_deref(), policy.as_deref()),
-            json,
-        ),
+        } => {
+            let result = if let Some(archive) = archive {
+                run_archive_with_policy(&archive, &release, output.as_deref(), policy.as_deref())
+            } else {
+                run_files_with_policy(
+                    metadata
+                        .as_deref()
+                        .expect("clap requires an artifact input"),
+                    &release,
+                    output.as_deref(),
+                    policy.as_deref(),
+                )
+            };
+            finish(result, json)
+        }
+        Command::Inspect { archive, output } => match inspect_archive(&archive) {
+            Err(error) => {
+                eprintln!(
+                    "{error}\nUse an .xcarchive directory or .ipa file, then run the command again."
+                );
+                ExitCode::from(1)
+            }
+            Ok(metadata) => {
+                let json = serde_json::to_string_pretty(&metadata).expect("serialize metadata");
+                if let Some(path) = output {
+                    if let Err(error) = fs::write(&path, format!("{json}\n")) {
+                        eprintln!("Could not write {}: {error}", path.display());
+                        return ExitCode::from(1);
+                    }
+                    println!("Metadata: {}", path.display());
+                } else {
+                    println!("{json}");
+                }
+                ExitCode::SUCCESS
+            }
+        },
         Command::Demo { json } => {
             let stamp = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -129,7 +178,7 @@ fn finish(result: Result<ios_review_gate::GateReport, String>, json: bool) -> Ex
                     println!("- {:?} [{}] {}", item.severity, item.code, item.message);
                 }
                 if let Some(path) = &report.packet_path {
-                    println!("Packet: {}", path.display());
+                    println!("Review packet: {}", path.display());
                 }
             }
             if report.passed {

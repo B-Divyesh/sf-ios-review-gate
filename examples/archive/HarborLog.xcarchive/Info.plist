@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>ApplicationProperties</key>
+  <dict>
+    <key>ApplicationPath</key>
+    <string>Applications/Harbor Log.app</string>
+    <key>CFBundleIdentifier</key>
+    <string>in.sociobot.harborlog</string>
+    <key>CFBundleShortVersionString</key>
+    <string>2.4.0</string>
+    <key>CFBundleVersion</key>
+    <string>108</string>
+  </dict>
+  <key>ArchiveVersion</key>
+  <integer>2</integer>
+</dict>
+</plist>

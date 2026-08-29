@@ -40,12 +40,15 @@ test('every repaired visitor promise is registered to an exact claim test', asyn
   const source = await readFile('site/src/main.js', 'utf8');
   const readme = await readFile('README.md', 'utf8');
   const required = [
-    ['core-without-team-license', 'Checks and packets need no Team license.'],
+    ['core-without-team-license', 'Checks and review packets cost $0.'],
     ['same-checker-demo', 'The website sample and command use the same bundled checker.'],
     ['actionable-mismatch-errors', 'Errors name the mismatch and the next fix.'],
     ['team-policy-download', 'Verified Team licenses enable the local policy download.'],
     ['team-queue-history', 'Team policies support queue histories beyond three submissions.'],
     ['team-purchase', 'One-time Team license'],
+    ['archive-inspection', 'Read version, build, bundle ID, and privacy use from an .xcarchive or .ipa.'],
+    ['offline-shell', 'The demo works offline after one visit.'],
+    ['license-metadata', 'The CLI uses the MIT License.'],
   ];
 
   for (const [id, publicCopy] of required) {
@@ -56,7 +59,7 @@ test('every repaired visitor promise is registered to an exact claim test', asyn
   }
 
   const cliPromises = [
-    ['cli-exit-codes', 'Exit code `0` means the gate passed.'],
+    ['cli-exit-codes', 'Exit code `0` means the check passed.'],
     ['cli-json-schema', 'The JSON object contains `passed`, `summary`, `findings`, `queue`, and `packet_path`.'],
   ];
   for (const [id, publicCopy] of cliPromises) {
@@ -65,4 +68,16 @@ test('every repaired visitor promise is registered to an exact claim test', asyn
     assert.ok(claim.test, `missing regression command for: ${id}`);
     assert.ok(readme.includes(publicCopy), `README promise is not covered: ${publicCopy}`);
   }
+});
+
+test('@claim:license-metadata keeps MIT licensing consistent', async () => {
+  const license = await readFile('LICENSE', 'utf8');
+  const cargo = await readFile('Cargo.toml', 'utf8');
+  const readme = await readFile('README.md', 'utf8');
+  const site = await readFile('site/src/main.js', 'utf8');
+  assert.match(license, /Permission is hereby granted, free of charge/);
+  assert.match(license, /THE SOFTWARE IS PROVIDED "AS IS"/);
+  assert.match(cargo, /^license = "MIT"$/m);
+  assert.match(readme, /## License\n\nMIT\./);
+  assert.ok(site.includes('The CLI uses the MIT License.'));
 });

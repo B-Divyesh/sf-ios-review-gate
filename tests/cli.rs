@@ -1,9 +1,10 @@
 use assert_cmd::Command;
 use image::{DynamicImage, ImageFormat};
 use ios_review_gate::{
-    ArtifactMetadata, Release, Severity, TeamPolicy, check, check_with_policy, run_files,
+    ArtifactMetadata, Release, Severity, TeamPolicy, check, check_with_policy, inspect_archive,
+    run_files,
 };
-use std::{fs, path::Path};
+use std::{fs, io::Write, path::Path};
 
 fn sample() -> (ArtifactMetadata, Release) {
     let metadata = serde_json::from_str(include_str!("../examples/sample/metadata.json")).unwrap();
@@ -467,7 +468,7 @@ fn claim_markdown_packet_writes_dated_decision_record() {
             && packet.contains(&format!("Generated: {today}"))
             && packet.contains("Rules: `apple-2026.1`")
             && packet.contains("## Queue plan")
-            && packet.contains("## Decision record")
+            && packet.contains("## Reviewer sign-off")
     );
 }
 
@@ -500,7 +501,7 @@ fn claim_core_gate_runs_without_team_license_and_writes_packet() {
     assert!(
         fs::read_to_string(packet)
             .unwrap()
-            .contains("## Decision record")
+            .contains("## Reviewer sign-off")
     );
 }
 
@@ -518,9 +519,9 @@ fn claim_bundled_demo_runs_in_a_new_temp_workspace() {
     assert!(text.contains("sample data, nothing from your projects was read"));
     let packet_line = text
         .lines()
-        .find(|line| line.starts_with("Packet: "))
+        .find(|line| line.starts_with("Review packet: "))
         .unwrap();
-    assert!(Path::new(packet_line.trim_start_matches("Packet: ")).is_file());
+    assert!(Path::new(packet_line.trim_start_matches("Review packet: ")).is_file());
 }
 
 #[test]
@@ -541,7 +542,7 @@ fn claim_demo_recording_matches_bundled_cli() {
         .expect("the demo reports its workspace");
     let packet = text
         .lines()
-        .find_map(|line| line.strip_prefix("Packet: "))
+        .find_map(|line| line.strip_prefix("Review packet: "))
         .map(std::path::PathBuf::from)
         .expect("the demo reports its packet");
 
@@ -685,4 +686,68 @@ fn claim_cli_json_schema() {
     assert!(value["findings"].is_array());
     assert!(value["queue"].is_object());
     assert!(value["packet_path"].is_null());
+}
+
+#[test]
+fn claim_archive_inspection_extracts_xcarchive_and_ipa_then_checks_release() {
+    let expected: ArtifactMetadata =
+        serde_json::from_str(include_str!("../examples/sample/metadata.json")).unwrap();
+    let xcarchive = Path::new("examples/archive/HarborLog.xcarchive");
+    let extracted = inspect_archive(xcarchive).unwrap();
+    assert_eq!(extracted, expected);
+
+    let temp = tempfile::tempdir().unwrap();
+    let ipa_path = temp.path().join("HarborLog.ipa");
+    let file = fs::File::create(&ipa_path).unwrap();
+    let mut ipa = zip::ZipWriter::new(file);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+    for (name, bytes) in [
+        (
+            "Payload/Harbor Log.app/Info.plist",
+            include_bytes!(
+                "../examples/archive/HarborLog.xcarchive/Products/Applications/Harbor Log.app/Info.plist"
+            )
+            .as_slice(),
+        ),
+        (
+            "Payload/Harbor Log.app/PrivacyInfo.xcprivacy",
+            include_bytes!(
+                "../examples/archive/HarborLog.xcarchive/Products/Applications/Harbor Log.app/PrivacyInfo.xcprivacy"
+            )
+            .as_slice(),
+        ),
+    ] {
+        ipa.start_file(name, options).unwrap();
+        ipa.write_all(bytes).unwrap();
+    }
+    ipa.finish().unwrap();
+    assert_eq!(inspect_archive(&ipa_path).unwrap(), expected);
+
+    let output = temp.path().join("review-packet.md");
+    Command::cargo_bin("ios-review-gate")
+        .unwrap()
+        .args([
+            "check",
+            "--archive",
+            xcarchive.to_str().unwrap(),
+            "--release",
+            "examples/sample/release.yaml",
+            "--output",
+            output.to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("PASS"));
+    assert!(output.is_file());
+
+    Command::cargo_bin("ios-review-gate")
+        .unwrap()
+        .args(["inspect", "--archive", xcarchive.to_str().unwrap()])
+        .assert()
+        .success()
+        .stdout(predicates::str::contains(
+            "\"bundle_id\": \"in.sociobot.harborlog\"",
+        ))
+        .stdout(predicates::str::contains("\"privacy_manifest\": true"));
 }

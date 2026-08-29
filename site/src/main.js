@@ -11,8 +11,8 @@ let licenseActive = false;
 let licenseNotice = '';
 
 const terminal = `<figure class="terminal-sheet" aria-labelledby="terminal-caption">
-  <img src="/assets/terminal-recording.svg" width="1000" height="540" alt="Terminal output shows the bundled release passing every check and writing a packet.">
-  <figcaption id="terminal-caption">The bundled demo checks a complete sample release and writes its packet.</figcaption>
+  <img src="/assets/terminal-recording.svg" width="1000" height="540" alt="Terminal output shows the bundled release passing every check and writing a Markdown review packet.">
+  <figcaption id="terminal-caption">The bundled demo checks a complete sample release and writes its review packet.</figcaption>
 </figure>`;
 
 const header = () => `<header class="site-header"><nav aria-label="Main navigation">
@@ -20,39 +20,39 @@ const header = () => `<header class="site-header"><nav aria-label="Main navigati
   <div class="nav-links"><a href="/demo" data-link>Demo</a><a href="/#install">Install</a><a href="/privacy" data-link>Privacy</a></div>
 </nav></header>`;
 
-const footer = () => `<footer><p>Check an iOS release and print its review packet.</p><nav aria-label="Footer navigation"><a href="/privacy" data-link>Privacy</a><a href="/terms" data-link>Terms</a><a href="https://hello-factory.sociobot.in" rel="external">Built by Param Factory <span class="sr-only">(external)</span></a></nav><p class="build">v0.1.0 · build 2026.08.28</p></footer>`;
+const footer = () => `<footer><p>Check an iOS release and print its Markdown review packet.</p><nav aria-label="Footer navigation"><a href="/privacy" data-link>Privacy</a><a href="/terms" data-link>Terms</a><a href="https://hello-factory.sociobot.in" rel="external">Built by Param Factory <span class="sr-only">(external)</span></a></nav><p class="build">v0.1.0 · build 2026.08.29</p></footer>`;
 
-const shell = (content, demoMode = false) => `${demoMode ? `<aside class="demo-banner" aria-label="Demo mode"><strong>Demo — no personal data is saved</strong><span><button id="reset-demo">Reset demo</button><a href="/" data-link>Start for real</a></span></aside>` : ''}${header()}<main id="main" tabindex="-1">${content}</main>${footer()}`;
+const shell = (content, demoMode = false) => `${demoMode ? `<aside class="demo-banner" aria-label="Demo mode"><strong>Demo — sample data, nothing is saved</strong><span><button id="reset-demo">Reset demo</button><a href="/#install">Install the CLI</a></span></aside>` : ''}${header()}<main id="main" tabindex="-1">${content}</main>${footer()}`;
 
 function paidSection() {
   const controls = licenseActive
     ? `<div class="license-active"><p class="active-label">Team license active</p><p>Build a shared policy file for queue limits and approved reason codes.</p><form id="policy-form"><label for="policy-name">Policy name</label><input id="policy-name" name="name" value="Release team" required><label for="history-limit">Active submission limit</label><input id="history-limit" name="limit" type="number" min="3" max="99" value="8" required><button class="button secondary" type="submit">Download Team policy</button></form><button class="text-button" id="remove-license" type="button">Remove license from this browser</button></div>`
     : `<a class="button primary" href="${CHECKOUT}" rel="external">Buy Team license<span class="sr-only"> at Sociobot checkout</span></a><form id="license-form"><label for="license-token">Have a license? Paste it here.</label><input id="license-token" name="license" autocomplete="off" required><button class="button secondary" type="submit">Verify Team license</button></form>`;
-  return `<section class="paid section-rule" aria-labelledby="paid-title"><div><p class="section-no">TEAM POLICY</p><h2 id="paid-title">Keep team rules beside the release</h2><p>Core checks and packet export work without a Team license. Verified Team licenses enable the local policy download. Team policies support queue histories beyond three submissions.</p></div><div class="price-box"><p class="price"><span>$</span>39</p><p class="price-note">One-time Team license</p>${controls}<p id="license-status" class="legal-note" aria-live="polite">${escapeHtml(licenseNotice)}</p><p class="legal-note">Dodo is the merchant of record for Sociobot purchases. Dodo handles refunds. A refund deactivates the license. See <a href="/privacy" data-link>privacy</a> and <a href="/terms" data-link>terms</a>.</p></div></section>`;
+  return `<section class="paid section-rule" aria-labelledby="paid-title"><div><p class="section-no">Team policy</p><h2 id="paid-title">Keep team rules beside the release</h2><p>Core checks and review packet export work without a Team license. Verified Team licenses enable the local policy download. Team policies support queue histories beyond three submissions.</p></div><div class="price-box"><p class="price"><span>$</span>39</p><p class="price-note">One-time Team license</p>${controls}<p id="license-status" class="legal-note" aria-live="polite">${escapeHtml(licenseNotice)}</p><p class="legal-note">Sociobot hosts checkout and license verification. For billing help, email <a href="mailto:billing@sociobot.in">billing@sociobot.in</a>. See <a href="/privacy" data-link>privacy</a> and <a href="/terms" data-link>terms</a>.</p></div></section>`;
 }
 
 function landing() {
   return shell(`<section class="hero drafting-grid">
-    <div class="hero-copy"><p class="eyebrow">Local App Review preflight · rules apple-2026.1</p><h1>Check your iOS release before review</h1>
-      <p class="lede">For small iOS teams that need one reviewable packet before they queue a build.</p>
-      <div class="hero-action"><a class="button primary" href="/demo" data-link>Try it with sample data</a><span>See a checked release and its packet.</span></div>
-      <ul class="facts"><li>Runs on your machine.</li><li>No App Store access.</li><li>Checks and packets need no Team license.</li></ul>
+    <div class="hero-copy"><p class="eyebrow">Checks metadata, screenshots, privacy, and queue timing</p><h1>Check your iOS release before review</h1>
+      <p class="lede">For small iOS teams that need one Markdown review packet before they queue a build.</p>
+      <div class="hero-action"><a class="button primary" href="/?demo=1" data-link>Try it with sample data</a><span>Open a checked sample and its review packet.</span></div>
+      <ul class="facts"><li>Release files stay on your machine.</li><li>The demo works offline after one visit.</li><li>Checks and review packets cost $0.</li></ul>
     </div>
     <div class="hero-art"><span class="measure-note" aria-hidden="true">RELEASE / 02.4</span><img src="/assets/release-blueprint.webp" width="768" height="512" alt="An exploded drafting view connects an app archive, metadata sheets, screenshots, and a review queue." fetchpriority="high"><span class="inspection-line" aria-hidden="true"></span></div>
   </section>
-  <section class="preview section-rule" aria-labelledby="preview-title"><div><p class="section-no">SHEET 01</p><h2 id="preview-title">See the gate result before submission</h2><p>The website sample and command use the same bundled checker. Errors name the mismatch and the next fix.</p></div>${terminal}</section>
-  <section class="how drafting-grid" aria-labelledby="how-title"><p class="section-no">PROCEDURE / 03</p><h2 id="how-title">Build one decision record</h2><ol class="steps"><li><span>01</span><div><h3>Export archive facts</h3><p>Write version, build, bundle ID, and privacy use to local JSON.</p></div></li><li><span>02</span><div><h3>Describe the release</h3><p>List localized copy, screenshot paths, privacy answers, and queue timing in YAML.</p></div></li><li><span>03</span><div><h3>Print the packet</h3><p>Run one command. Fix holds, review warnings, and keep the dated Markdown file.</p></div></li></ol></section>
-  <section id="install" class="install section-rule" aria-labelledby="install-title"><div><p class="section-no">COMMAND / 01</p><h2 id="install-title">Run the gate in your repository</h2><p>Build the single Rust binary, then keep <code>release.yaml</code> beside the app.</p></div><pre tabindex="0" aria-label="Install and run command"><code>cargo install --git https://github.com/B-Divyesh/sf-ios-review-gate
+  <section class="preview section-rule" aria-labelledby="preview-title"><div><h2 id="preview-title">See the check result before submission</h2><p>The website sample and command use the same bundled checker. Errors name the mismatch and the next fix.</p></div>${terminal}</section>
+  <section class="how drafting-grid" aria-labelledby="how-title"><h2 id="how-title">Build one review packet</h2><ol class="steps"><li><span>01</span><div><h3>Inspect your archive</h3><p>Read version, build, bundle ID, and privacy use from an .xcarchive or .ipa.</p></div></li><li><span>02</span><div><h3>Describe the release</h3><p>List localized copy, screenshot paths, privacy answers, and queue timing in YAML.</p></div></li><li><span>03</span><div><h3>Print the review packet</h3><p>Run one command. Fix holds and warnings, then keep the Markdown review packet.</p></div></li></ol></section>
+  <section id="install" class="install section-rule" aria-labelledby="install-title"><div><h2 id="install-title">Run the checker in your repository</h2><p>Build the single Rust binary, then keep <code>release.yaml</code> beside the app.</p></div><pre tabindex="0" aria-label="Install and run command"><code>cargo install --git https://github.com/B-Divyesh/sf-ios-review-gate
 ios-review-gate check \\
-  --metadata build/metadata.json \\
+  --archive build/HarborLog.xcarchive \\
   --release release.yaml \\
   --output release-packet.md</code></pre></section>
-  <section class="limits drafting-grid" aria-labelledby="limits-title"><p class="section-no">BOUNDARY / LOCAL</p><h2 id="limits-title">Your release stays local</h2><div class="two-col"><p>The CLI reads the paths you give it. It has no telemetry and sends no release data.</p><p>It does not upload builds, scrape App Store Connect, or predict Apple's decision.</p></div></section>
+  <section class="limits drafting-grid" aria-labelledby="limits-title"><h2 id="limits-title">Your release files stay local</h2><div class="two-col"><p>The CLI reads the paths you give it. It has no telemetry and sends no release data.</p><p>It does not upload builds, scrape App Store Connect, or predict Apple's decision.</p></div></section>
   ${paidSection()}`);
 }
 
 function demo() {
-  return shell(`<section class="demo-page drafting-grid"><div><p class="eyebrow">Bundled sandbox · no setup</p><h1>Inspect a complete sample release</h1><p class="lede">This recording comes from the shipped Harbor Log sample and the real checker.</p><div class="sample-ledger"><h2>Release facts</h2><dl><div><dt>App</dt><dd>Harbor Log 2.4.0</dd></div><div><dt>Build</dt><dd>108</dd></div><div><dt>Locale</dt><dd>en-US</dd></div><div><dt>Privacy</dt><dd>Manifest present</dd></div><div><dt>Decision</dt><dd class="stamp-pass">PASS</dd></div></dl></div></div>${terminal}</section><section class="packet-preview section-rule" aria-labelledby="packet-title"><div><p class="section-no">OUTPUT / MARKDOWN</p><h2 id="packet-title">The packet records the decision</h2><p>It names the checked rules, artifact identity, queue dates, findings, and reviewer sign-off.</p></div><pre tabindex="0" aria-label="Sample App Review packet"><code># App Review packet — Harbor Log 2.4.0 (108)
+  return shell(`<section class="demo-page drafting-grid"><div><p class="eyebrow">Bundled sample · no setup</p><h1>Inspect a complete sample release</h1><p class="lede">This recording uses the shipped Harbor Log sample and the same checker as the CLI.</p><div class="sample-ledger"><h2>Release facts</h2><dl><div><dt>App</dt><dd>Harbor Log 2.4.0</dd></div><div><dt>Build</dt><dd>108</dd></div><div><dt>Locale</dt><dd>en-US</dd></div><div><dt>Privacy</dt><dd>Manifest present</dd></div><div><dt>Decision</dt><dd class="stamp-pass">PASS</dd></div></dl></div></div>${terminal}</section><section class="packet-preview section-rule" aria-labelledby="packet-title"><div><h2 id="packet-title">The review packet records the decision</h2><p>It names the checked rules, artifact identity, queue dates, findings, and reviewer sign-off.</p></div><pre tabindex="0" aria-label="Sample Markdown review packet"><code># Markdown review packet — Harbor Log 2.4.0 (108)
 
 Decision: PASS
 Rules: apple-2026.1
@@ -65,11 +65,11 @@ Buffered decision: 2026-09-06</code></pre></section>`, true);
 
 function legal(kind) {
   const privacy = kind === 'privacy';
-  return shell(`<article class="legal"><p class="eyebrow">Effective 29 August 2026</p><h1>${privacy ? 'Privacy for iOS Review Gate' : 'Terms for iOS Review Gate'}</h1>${privacy ? `<h2>Release files stay on your machine</h2><p>The CLI reads only the paths you provide. It does not send telemetry or release data.</p><h2>Website storage</h2><p>The demo keeps no personal release data. Its offline shell uses Cache Storage for static site files only. If you paste or receive a license, your browser stores the token and its last verification result. You can clear them in browser settings.</p><h2>License verification</h2><p>The browser sends a license token to the Sociobot billing API. It sends no release files. Dodo is the merchant of record for Sociobot purchases.</p><h2>Contact</h2><p>Email <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a> with a privacy question.</p>` : `<h2>Local preflight, not Apple approval</h2><p>The checker finds inconsistencies in the files you provide. It does not guarantee approval or replace Apple's current guidance.</p><h2>License</h2><p>The free CLI is available under the MIT License. A Team license costs $39 once and adds local policy downloads. Team policies support queue histories beyond three submissions.</p><h2>Purchase and refunds</h2><p>The purchase uses Sociobot's hosted checkout. Dodo is the merchant of record for Sociobot purchases. Dodo handles refunds. A refund deactivates the license.</p><h2>Warranty</h2><p>The software is provided as is, without warranty. You remain responsible for each submission.</p>`}</article>`);
+  return shell(`<article class="legal"><p class="eyebrow">Effective 29 August 2026</p><h1>${privacy ? 'Privacy for iOS Review Gate' : 'Terms for iOS Review Gate'}</h1>${privacy ? `<h2>Release files stay on your machine</h2><p>The CLI reads only the paths you provide. It does not send telemetry or release data.</p><h2>Website storage</h2><p>The demo saves no personal release data. Its offline shell caches same-origin static site files only. If you paste or receive a license, your browser stores the token and its last verification result. You can clear them in browser settings.</p><h2>License verification</h2><p>The browser sends a license token to the Sociobot billing API. It sends no release files.</p><h2>Contact</h2><p>Email <a href="mailto:privacy@sociobot.in">privacy@sociobot.in</a> with a privacy question.</p>` : `<h2>Local check, not Apple approval</h2><p>The checker finds inconsistencies in the files you provide. It does not guarantee approval or replace Apple's current guidance.</p><h2>License</h2><p>The CLI uses the MIT License. A Team license costs $39 once and adds local policy downloads. Team policies support queue histories beyond three submissions.</p><h2>Purchase support</h2><p>Sociobot hosts checkout and license verification. Email <a href="mailto:billing@sociobot.in">billing@sociobot.in</a> for billing help.</p><h2>Warranty</h2><p>The software is provided as is, without warranty. You remain responsible for each submission.</p>`}</article>`);
 }
 
 function notFound() {
-  return shell(`<section class="not-found drafting-grid"><div><p class="section-no">SHEET / NOT FOUND</p><h1>This release sheet is missing</h1><p>The address does not match a page in this packet.</p><a class="button primary" href="/" data-link>Return to the gate</a></div><div class="missing-mark" aria-hidden="true">404</div></section>`);
+  return shell(`<section class="not-found drafting-grid"><div><h1>This page does not exist</h1><p>The address does not match a page on this site.</p><a class="button primary" href="/" data-link>Return home</a></div><div class="missing-mark" aria-hidden="true">404</div></section>`);
 }
 
 function escapeHtml(value) {
@@ -98,9 +98,9 @@ function cachedLicenseVerdict() {
 
 const routes = {
   '/': { title: 'iOS Review Gate — check a release before review', description: 'Check iOS release metadata, screenshots, privacy answers, and queue timing. Print a local review packet before submission.', render: landing },
-  '/demo': { title: 'Demo — iOS Review Gate', description: 'Inspect a complete sample iOS release and the Markdown packet produced by the local gate.', render: demo },
+  '/demo': { title: 'Demo — iOS Review Gate', description: 'Inspect a complete sample iOS release and the Markdown review packet produced by the local checker.', render: demo },
   '/privacy': { title: 'Privacy — iOS Review Gate', description: 'Read how iOS Review Gate keeps release files local and handles license tokens.', render: () => legal('privacy') },
-  '/terms': { title: 'Terms — iOS Review Gate', description: 'Read the license, purchase, refund, and warranty terms for iOS Review Gate.', render: () => legal('terms') },
+  '/terms': { title: 'Terms — iOS Review Gate', description: 'Read the license, purchase support, and warranty terms for iOS Review Gate.', render: () => legal('terms') },
 };
 
 function bindPage() {
@@ -111,8 +111,13 @@ function bindPage() {
   document.querySelector('#remove-license')?.addEventListener('click', removeLicense);
 }
 
+function currentRoute() {
+  if (location.pathname === '/' && new URLSearchParams(location.search).get('demo') === '1') return routes['/demo'];
+  return routes[location.pathname];
+}
+
 function render(focus = false) {
-  const route = routes[location.pathname];
+  const route = currentRoute();
   document.title = route?.title || 'Page not found — iOS Review Gate';
   const description = route?.description || 'This iOS Review Gate page does not exist.';
   document.querySelector('meta[name="description"]')?.setAttribute('content', description);
@@ -121,7 +126,7 @@ function render(focus = false) {
   document.querySelector('meta[name="twitter:title"]')?.setAttribute('content', document.title);
   document.querySelector('meta[name="twitter:description"]')?.setAttribute('content', description);
   const canonical = document.querySelector('link[rel="canonical"]');
-  if (canonical) canonical.href = `https://ios-review-gate.sociobot.in${route ? location.pathname : '/404'}`;
+  if (canonical) canonical.href = `https://ios-review-gate.sociobot.in${route === routes['/demo'] ? '/demo' : route ? location.pathname : '/404'}`;
   app.innerHTML = route ? route.render() : notFound();
   bindPage();
   if (focus) {
@@ -193,7 +198,7 @@ function renderPaidPanel() {
 }
 
 async function initializeLicense() {
-  if (location.pathname === '/demo') return;
+  if (currentRoute() === routes['/demo']) return;
   const received = new URLSearchParams(location.search).get('license');
   if (received) { localStorage.setItem(LICENSE_KEY, received); history.replaceState({}, '', location.pathname); }
   const token = received || localStorage.getItem(LICENSE_KEY);

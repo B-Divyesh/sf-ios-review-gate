@@ -1,4 +1,4 @@
-const CACHE = 'ios-review-gate-v5';
+const CACHE = 'ios-review-gate-v6';
 const SHELL = ['/', '/demo', '/privacy', '/terms', '/assets/b612-mono.woff2', '/assets/release-blueprint.webp', '/assets/terminal-recording.svg'];
 
 async function appAssets() {
@@ -24,7 +24,11 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) return;
-  event.respondWith(caches.open(CACHE)
-    .then(cache => cache.match(event.request, { ignoreVary: true }))
-    .then(cached => cached || fetch(event.request)));
+  event.respondWith(caches.open(CACHE).then(async cache => {
+    const url = new URL(event.request.url);
+    const fallback = url.searchParams.get('demo') === '1' ? '/demo' : null;
+    return await cache.match(event.request, { ignoreVary: true })
+      || (fallback && await cache.match(fallback, { ignoreVary: true }))
+      || fetch(event.request);
+  }));
 });

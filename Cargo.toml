@@ -3,7 +3,7 @@ name = "ios-review-gate"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
-description = "Check an iOS release and print a dated App Review packet"
+description = "Check an iOS release and print a Markdown review packet"
 license = "MIT"
 repository = "https://github.com/B-Divyesh/sf-ios-review-gate"
 keywords = ["ios", "app-store", "release", "cli"]
@@ -16,6 +16,8 @@ clap = { version = "4.5", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
+plist = "=1.7.1"
+zip = { version = "=2.4.2", default-features = false, features = ["deflate"] }
 # Decode the two screenshot formats that the release manifest accepts.  A
 # signature check alone can accept a truncated image and create a false PASS.
 image = { version = "0.25.8", default-features = false, features = ["jpeg", "png"] }

@@ -1,9 +1,11 @@
 use chrono::{Days, NaiveDate, Utc};
 use image::{GenericImageView, ImageFormat};
+use plist::Value;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
+    io::{Cursor, Read},
     path::{Path, PathBuf},
 };
 
@@ -45,7 +47,7 @@ fn official_rules() -> RuleSet {
     rules
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct ArtifactMetadata {
     pub bundle_id: String,
     pub version: String,
@@ -59,11 +61,273 @@ pub struct ArtifactMetadata {
     pub accessed_apis: Vec<AccessedApi>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize, Clone, PartialEq, Eq)]
 pub struct AccessedApi {
     pub category: String,
     #[serde(default)]
     pub reasons: Vec<String>,
+}
+
+const MAX_PLIST_BYTES: u64 = 10 * 1024 * 1024;
+
+fn plist_string<'a>(dictionary: &'a plist::Dictionary, key: &str) -> Result<&'a str, String> {
+    dictionary
+        .get(key)
+        .and_then(Value::as_string)
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| format!("Archive Info.plist has no {key}."))
+}
+
+fn merge_privacy_manifest(value: &Value, metadata: &mut ArtifactMetadata) -> Result<(), String> {
+    let dictionary = value
+        .as_dictionary()
+        .ok_or_else(|| "PrivacyInfo.xcprivacy is not a property-list dictionary.".to_string())?;
+    metadata.privacy_manifest = true;
+    metadata.privacy_tracking |= dictionary
+        .get("NSPrivacyTracking")
+        .and_then(Value::as_boolean)
+        .unwrap_or(false);
+
+    if let Some(items) = dictionary
+        .get("NSPrivacyCollectedDataTypes")
+        .and_then(Value::as_array)
+    {
+        for item in items {
+            if let Some(data_type) = item
+                .as_dictionary()
+                .and_then(|entry| entry.get("NSPrivacyCollectedDataType"))
+                .and_then(Value::as_string)
+            {
+                metadata.privacy_collected_data.push(to_snake_case(
+                    data_type
+                        .strip_prefix("NSPrivacyCollectedDataType")
+                        .unwrap_or(data_type),
+                ));
+            }
+        }
+    }
+
+    if let Some(items) = dictionary
+        .get("NSPrivacyAccessedAPITypes")
+        .and_then(Value::as_array)
+    {
+        for item in items {
+            let Some(entry) = item.as_dictionary() else {
+                continue;
+            };
+            let Some(category) = entry
+                .get("NSPrivacyAccessedAPIType")
+                .and_then(Value::as_string)
+            else {
+                continue;
+            };
+            let reasons = entry
+                .get("NSPrivacyAccessedAPITypeReasons")
+                .and_then(Value::as_array)
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter_map(Value::as_string)
+                        .map(str::to_string)
+                        .collect()
+                })
+                .unwrap_or_default();
+            metadata.accessed_apis.push(AccessedApi {
+                category: category
+                    .strip_prefix("NSPrivacyAccessedAPICategory")
+                    .unwrap_or(category)
+                    .to_string(),
+                reasons,
+            });
+        }
+    }
+    Ok(())
+}
+
+fn to_snake_case(value: &str) -> String {
+    let characters: Vec<char> = value.chars().collect();
+    let mut output = String::new();
+    for (index, character) in characters.iter().enumerate() {
+        if character.is_ascii_uppercase()
+            && index > 0
+            && (characters[index - 1].is_ascii_lowercase()
+                || characters
+                    .get(index + 1)
+                    .is_some_and(|next| next.is_ascii_lowercase()))
+        {
+            output.push('_');
+        }
+        output.push(character.to_ascii_lowercase());
+    }
+    output
+}
+
+fn normalize_archive_metadata(metadata: &mut ArtifactMetadata) {
+    metadata.privacy_collected_data.sort();
+    metadata.privacy_collected_data.dedup();
+    let mut accessed = BTreeMap::<String, BTreeSet<String>>::new();
+    for api in std::mem::take(&mut metadata.accessed_apis) {
+        accessed
+            .entry(api.category)
+            .or_default()
+            .extend(api.reasons);
+    }
+    metadata.accessed_apis = accessed
+        .into_iter()
+        .map(|(category, reasons)| AccessedApi {
+            category,
+            reasons: reasons.into_iter().collect(),
+        })
+        .collect();
+}
+
+fn read_plist(path: &Path) -> Result<Value, String> {
+    let file = fs::File::open(path)
+        .map_err(|error| format!("Could not read {}: {error}", path.display()))?;
+    let size = file
+        .metadata()
+        .map_err(|error| format!("Could not inspect {}: {error}", path.display()))?
+        .len();
+    if size > MAX_PLIST_BYTES {
+        return Err(format!("{} is larger than 10 MB.", path.display()));
+    }
+    Value::from_reader(file).map_err(|error| format!("Could not parse {}: {error}", path.display()))
+}
+
+fn collect_privacy_manifests(root: &Path, output: &mut Vec<PathBuf>) -> Result<(), String> {
+    let entries = fs::read_dir(root)
+        .map_err(|error| format!("Could not read {}: {error}", root.display()))?;
+    for entry in entries {
+        let entry = entry.map_err(|error| format!("Could not inspect archive: {error}"))?;
+        let path = entry.path();
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("Could not inspect {}: {error}", path.display()))?;
+        if file_type.is_dir() {
+            collect_privacy_manifests(&path, output)?;
+        } else if file_type.is_file()
+            && path.file_name().and_then(|name| name.to_str()) == Some("PrivacyInfo.xcprivacy")
+        {
+            output.push(path);
+        }
+    }
+    Ok(())
+}
+
+fn metadata_from_plists(info: &Value, privacy: &[Value]) -> Result<ArtifactMetadata, String> {
+    let dictionary = info
+        .as_dictionary()
+        .ok_or_else(|| "App Info.plist is not a property-list dictionary.".to_string())?;
+    let mut metadata = ArtifactMetadata {
+        bundle_id: plist_string(dictionary, "CFBundleIdentifier")?.to_string(),
+        version: plist_string(dictionary, "CFBundleShortVersionString")?.to_string(),
+        build: plist_string(dictionary, "CFBundleVersion")?.to_string(),
+        privacy_manifest: false,
+        privacy_tracking: false,
+        privacy_collected_data: Vec::new(),
+        accessed_apis: Vec::new(),
+    };
+    for value in privacy {
+        merge_privacy_manifest(value, &mut metadata)?;
+    }
+    normalize_archive_metadata(&mut metadata);
+    Ok(metadata)
+}
+
+fn inspect_xcarchive(path: &Path) -> Result<ArtifactMetadata, String> {
+    let archive_info = read_plist(&path.join("Info.plist"))?;
+    let properties = archive_info
+        .as_dictionary()
+        .and_then(|dictionary| dictionary.get("ApplicationProperties"))
+        .and_then(Value::as_dictionary)
+        .ok_or_else(|| "Archive Info.plist has no ApplicationProperties dictionary.".to_string())?;
+    let relative_app = plist_string(properties, "ApplicationPath")?;
+    if Path::new(relative_app)
+        .components()
+        .any(|component| !matches!(component, std::path::Component::Normal(_)))
+    {
+        return Err("Archive ApplicationPath must stay inside Products.".to_string());
+    }
+    let app_root = path.join("Products").join(relative_app);
+    if !app_root.is_dir() {
+        return Err(format!(
+            "Archive app folder does not exist: {}",
+            app_root.display()
+        ));
+    }
+    let info = read_plist(&app_root.join("Info.plist"))?;
+    let mut manifest_paths = Vec::new();
+    collect_privacy_manifests(&app_root, &mut manifest_paths)?;
+    let privacy = manifest_paths
+        .iter()
+        .map(|manifest| read_plist(manifest))
+        .collect::<Result<Vec<_>, _>>()?;
+    metadata_from_plists(&info, &privacy)
+}
+
+fn read_zip_plist<R: Read + std::io::Seek>(
+    archive: &mut zip::ZipArchive<R>,
+    name: &str,
+) -> Result<Value, String> {
+    let mut file = archive
+        .by_name(name)
+        .map_err(|error| format!("Could not read {name} from IPA: {error}"))?;
+    if file.size() > MAX_PLIST_BYTES {
+        return Err(format!("{name} is larger than 10 MB."));
+    }
+    let mut bytes = Vec::with_capacity(file.size() as usize);
+    file.read_to_end(&mut bytes)
+        .map_err(|error| format!("Could not read {name} from IPA: {error}"))?;
+    Value::from_reader(Cursor::new(bytes))
+        .map_err(|error| format!("Could not parse {name} from IPA: {error}"))
+}
+
+fn inspect_ipa(path: &Path) -> Result<ArtifactMetadata, String> {
+    let file = fs::File::open(path)
+        .map_err(|error| format!("Could not read {}: {error}", path.display()))?;
+    let mut archive = zip::ZipArchive::new(file)
+        .map_err(|error| format!("Could not open {} as an IPA: {error}", path.display()))?;
+    let app_info_name = archive
+        .file_names()
+        .find(|name| {
+            let parts: Vec<_> = name.split('/').collect();
+            parts.len() == 3
+                && parts[0] == "Payload"
+                && parts[1].ends_with(".app")
+                && parts[2] == "Info.plist"
+        })
+        .map(str::to_string)
+        .ok_or_else(|| "IPA has no Payload/*.app/Info.plist.".to_string())?;
+    let app_prefix = app_info_name.trim_end_matches("Info.plist").to_string();
+    let privacy_names: Vec<String> = archive
+        .file_names()
+        .filter(|name| name.starts_with(&app_prefix) && name.ends_with("PrivacyInfo.xcprivacy"))
+        .map(str::to_string)
+        .collect();
+    let info = read_zip_plist(&mut archive, &app_info_name)?;
+    let privacy = privacy_names
+        .iter()
+        .map(|name| read_zip_plist(&mut archive, name))
+        .collect::<Result<Vec<_>, _>>()?;
+    metadata_from_plists(&info, &privacy)
+}
+
+/// Extract release identity and privacy declarations from an `.xcarchive` or `.ipa` locally.
+pub fn inspect_archive(path: &Path) -> Result<ArtifactMetadata, String> {
+    if path.is_dir() {
+        return inspect_xcarchive(path);
+    }
+    if path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("ipa"))
+    {
+        return inspect_ipa(path);
+    }
+    Err(format!(
+        "{} is not an .xcarchive directory or .ipa file.",
+        path.display()
+    ))
 }
 
 #[derive(Debug, Deserialize)]
@@ -851,6 +1115,25 @@ pub fn run_files_with_policy(
             .map_err(|e| format!("Could not read {}: {}", metadata_path.display(), e))?,
     )
     .map_err(|e| format!("Could not parse {}: {}", metadata_path.display(), e))?;
+    run_metadata_with_policy(metadata, release_path, output, policy_path)
+}
+
+pub fn run_archive_with_policy(
+    archive_path: &Path,
+    release_path: &Path,
+    output: Option<&Path>,
+    policy_path: Option<&Path>,
+) -> Result<GateReport, String> {
+    let metadata = inspect_archive(archive_path)?;
+    run_metadata_with_policy(metadata, release_path, output, policy_path)
+}
+
+fn run_metadata_with_policy(
+    metadata: ArtifactMetadata,
+    release_path: &Path,
+    output: Option<&Path>,
+    policy_path: Option<&Path>,
+) -> Result<GateReport, String> {
     let release: Release = serde_yaml::from_str(
         &fs::read_to_string(release_path)
             .map_err(|e| format!("Could not read {}: {}", release_path.display(), e))?,
@@ -888,7 +1171,7 @@ pub fn render_packet(
         .map(|name| format!("  \nTeam policy: `{name}`"))
         .unwrap_or_default();
     let mut out = format!(
-        "# App Review packet — {} {} ({})\n\n**Decision: {}**  \nGenerated: {}  \nRules: `{}`{}  \nOwner: {}\n\n## Artifact\n\n- Bundle ID: `{}`\n- Version: `{}`\n- Build: `{}`\n- Privacy manifest: {}\n\n## Gate findings\n\n",
+        "# Markdown review packet — {} {} ({})\n\n**Decision: {}**  \nGenerated: {}  \nRules: `{}`{}  \nOwner: {}\n\n## Artifact\n\n- Bundle ID: `{}`\n- Version: `{}`\n- Build: `{}`\n- Privacy manifest: {}\n\n## Check findings\n\n",
         release.app_name,
         release.version,
         release.build,
@@ -922,6 +1205,6 @@ pub fn render_packet(
             locale
         ));
     }
-    out.push_str("\n## Decision record\n\n- [ ] Reviewer confirmed the artifact identity.\n- [ ] Reviewer confirmed privacy answers.\n- [ ] Reviewer confirmed screenshots and localized copy.\n- [ ] Release owner accepted the queue window.\n\nThis packet is a local preflight record. It is not an Apple approval.\n");
+    out.push_str("\n## Reviewer sign-off\n\n- [ ] Reviewer confirmed the artifact identity.\n- [ ] Reviewer confirmed privacy answers.\n- [ ] Reviewer confirmed screenshots and localized copy.\n- [ ] Release owner accepted the queue window.\n\nThis review packet records a local check. It is not an Apple approval.\n");
     out
 }

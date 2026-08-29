@@ -4,35 +4,42 @@ import AxeBuilder from '@axe-core/playwright';
 test('@claim:one-click-demo opens a complete sample in one click', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: 'Try it with sample data' }).click();
-  await expect(page).toHaveURL(/\/demo$/);
+  await expect(page).toHaveURL(/\?demo=1$/);
   await expect(page.getByRole('heading', { level: 1, name: 'Inspect a complete sample release' })).toBeVisible();
   await expect(page.getByText('Harbor Log 2.4.0', { exact: true })).toBeVisible();
   await expect(page.getByText('PASS', { exact: true }).first()).toBeVisible();
-  await expect(page.getByText('Demo — no personal data is saved')).toBeVisible();
+  await expect(page.getByText('Demo — sample data, nothing is saved')).toBeVisible();
+  await page.getByRole('button', { name: 'Reset demo' }).click();
+  await expect(page.getByText('Harbor Log 2.4.0', { exact: true })).toBeVisible();
 });
 
-test('@claim:browser-demo-local saves no personal release data and sends no cross-origin requests', async ({ page }) => {
+test('@claim:browser-demo-local keeps real storage untouched and sends no cross-origin requests', async ({ page }) => {
   const crossOrigin = [];
   page.on('request', request => { if (new URL(request.url()).origin !== 'http://127.0.0.1:4173') crossOrigin.push(request.url()); });
-  await page.goto('/demo');
+  await page.addInitScript(() => {
+    localStorage.setItem('real:release', 'private-project');
+    localStorage.setItem('sb_license:ios-review-gate', 'real-license');
+    sessionStorage.setItem('real:draft', 'private-draft');
+  });
+  await page.goto('/?demo=1');
   await page.getByRole('button', { name: 'Reset demo' }).click();
   const storage = await page.evaluate(async () => ({
-    local: Object.keys(localStorage),
-    session: Object.keys(sessionStorage),
+    local: { ...localStorage },
+    session: { ...sessionStorage },
     cookies: document.cookie,
     databases: (await indexedDB.databases()).map(database => database.name),
     caches: (await caches.keys()).sort(),
   }));
   expect(crossOrigin).toEqual([]);
-  expect(storage.local).toEqual([]);
-  expect(storage.session).toEqual([]);
+  expect(storage.local).toEqual({ 'real:release': 'private-project', 'sb_license:ios-review-gate': 'real-license' });
+  expect(storage.session).toEqual({ 'real:draft': 'private-draft' });
   expect(storage.cookies).toBe('');
   expect(storage.databases).toEqual([]);
-  expect(storage.caches).toEqual(['ios-review-gate-v5']);
+  expect(storage.caches).toEqual(['ios-review-gate-v6']);
 });
 
 test('routes expose one h1, titles, keyboard focus, and no serious axe findings', async ({ page }) => {
-  for (const [path, title] of [['/', /iOS Review Gate/], ['/demo', /^Demo/], ['/privacy', /^Privacy/], ['/terms', /^Terms/], ['/missing', /^Page not found/]]) {
+  for (const [path, title] of [['/', /iOS Review Gate/], ['/?demo=1', /^Demo/], ['/demo', /^Demo/], ['/privacy', /^Privacy/], ['/terms', /^Terms/], ['/missing', /^Page not found/]]) {
     await page.goto(path);
     await expect(page).toHaveTitle(title);
     await expect(page.locator('main')).toHaveCount(1);
@@ -53,7 +60,7 @@ test('dark treatment has no serious axe findings', async ({ page }) => {
 
 test('mobile code samples are keyboard focusable and have no serious axe findings', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  for (const [path, label] of [['/', 'Install and run command'], ['/demo', 'Sample App Review packet']]) {
+  for (const [path, label] of [['/', 'Install and run command'], ['/?demo=1', 'Sample Markdown review packet']]) {
     await page.goto(path);
     const codeSample = page.getByLabel(label);
     await codeSample.focus();
@@ -66,25 +73,35 @@ test('mobile code samples are keyboard focusable and have no serious axe finding
 test('dark mobile demo banner has readable controls and no serious axe findings', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.emulateMedia({ colorScheme: 'dark' });
-  await page.goto('/demo');
+  await page.goto('/?demo=1');
   const banner = page.getByLabel('Demo mode');
-  await expect(banner).toContainText('Demo — no personal data is saved');
+  await expect(banner).toContainText('Demo — sample data, nothing is saved');
   await expect(page.getByRole('button', { name: 'Reset demo' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Start for real' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Install the CLI' })).toHaveAttribute('href', '/#install');
   const results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter(v => ['serious', 'critical'].includes(v.impact))).toEqual([]);
 });
 
-test('warmed demo reloads offline with its cached app shell', async ({ page, context }) => {
-  await page.goto('/demo', { waitUntil: 'networkidle' });
+test('@claim:offline-shell caches only same-origin static files and reloads the demo offline', async ({ page, context }) => {
+  await page.goto('/?demo=1', { waitUntil: 'networkidle' });
   await page.evaluate(() => navigator.serviceWorker.ready);
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
   await expect.poll(() => page.evaluate(async () => {
-    const cache = await caches.open('ios-review-gate-v5');
+    const cache = await caches.open('ios-review-gate-v6');
     const paths = (await cache.keys()).map(request => new URL(request.url).pathname);
     return paths.some(path => /^\/assets\/index-.+\.js$/.test(path))
       && paths.some(path => /^\/assets\/index-.+\.css$/.test(path));
   })).toBe(true);
+  const cachedUrls = await page.evaluate(async () => {
+    const cache = await caches.open('ios-review-gate-v6');
+    return (await cache.keys()).map(request => request.url).sort();
+  });
+  expect(cachedUrls.length).toBeGreaterThan(7);
+  for (const cachedUrl of cachedUrls) {
+    const url = new URL(cachedUrl);
+    expect(url.origin).toBe('http://127.0.0.1:4173');
+    expect(url.pathname === '/' || ['/demo', '/privacy', '/terms'].includes(url.pathname) || url.pathname.startsWith('/assets/')).toBe(true);
+  }
   await page.waitForTimeout(250);
   await context.setOffline(true);
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -97,7 +114,7 @@ test('keyboard activation opens the sample and moves focus to its heading', asyn
   const action = page.getByRole('link', { name: 'Try it with sample data' });
   await action.focus();
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/\/demo$/);
+  await expect(page).toHaveURL(/\?demo=1$/);
   await expect(page.getByRole('heading', { level: 1 })).toBeFocused();
 });
 
@@ -107,6 +124,21 @@ test('mobile layout keeps the first action visible and avoids horizontal scroll'
   await expect(page.getByRole('link', { name: 'Try it with sample data' })).toBeVisible();
   const widths = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
   expect(widths.scroll).toBe(widths.client);
+});
+
+test('desktop first screen contains the action and all three facts', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/');
+  for (const text of [
+    'Try it with sample data',
+    'Release files stay on your machine.',
+    'The demo works offline after one visit.',
+    'Checks and review packets cost $0.',
+  ]) {
+    const box = await page.getByText(text, { exact: true }).boundingBox();
+    expect(box, text).not.toBeNull();
+    expect(box.y + box.height, text).toBeLessThanOrEqual(900);
+  }
 });
 
 test('mobile wordmark includes its visible RG label in its accessible name', async ({ page }) => {
@@ -164,7 +196,7 @@ test('mobile 200% text keeps every demo result edge visible', async ({ page }) =
       '.sample-ledger',
       '.terminal-sheet',
       '#packet-title',
-      '[aria-label="Sample App Review packet"]',
+      '[aria-label="Sample Markdown review packet"]',
     ];
     return {
       viewport,
@@ -186,10 +218,15 @@ test('mobile 200% text keeps every demo result edge visible', async ({ page }) =
   }
 });
 
-test('the deployable not-found page has a designed recovery route and a real 404 override', async ({ page }) => {
+test('the deployable not-found page has complete metadata, shared navigation, and recovery', async ({ page }) => {
   await page.goto('/404.html');
-  await expect(page.getByRole('heading', { level: 1, name: 'This release sheet is missing' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Return to the gate' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'This page does not exist' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Return home' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Install' })).toHaveAttribute('href', '/#install');
+  await expect(page.getByRole('link', { name: /Built by Param Factory/ })).toBeVisible();
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', 'https://ios-review-gate.sociobot.in/404');
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute('content', /og-card\.webp$/);
+  await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveCount(1);
 });
 
 test('public artwork loads and the page reports no browser errors', async ({ page }) => {

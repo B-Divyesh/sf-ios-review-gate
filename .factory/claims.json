@@ -15,7 +15,7 @@
   },
   {
     "id": "markdown-packet",
-    "claim": "Prints a dated Markdown decision packet",
+    "claim": "Prints a dated Markdown review packet that names the rules version",
     "where": "landing, README",
     "test": "cargo test claim_markdown_packet",
     "sandbox": "temporary directory populated only with bundled sample data"
@@ -33,6 +33,13 @@
     "where": "README",
     "test": "cargo test claim_bundled_demo",
     "sandbox": "fresh command process; assert packet exists under the reported temp path"
+  },
+  {
+    "id": "archive-inspection",
+    "claim": "Extracts identity and privacy declarations from .xcarchive directories and .ipa files, then checks the release",
+    "where": "landing procedure, install command, README",
+    "test": "cargo test claim_archive_inspection_extracts_xcarchive_and_ipa_then_checks_release",
+    "sandbox": "shipped Harbor Log .xcarchive fixture plus an IPA assembled from the same property lists in a temporary directory; assert extracted JSON and PASS packet"
   },
   {
     "id": "same-checker-demo",
@@ -102,7 +109,14 @@
     "claim": "The browser demo saves no personal release data and sends no cross-origin requests",
     "where": "demo banner and privacy page",
     "test": "npm run build:site && npx playwright test --grep @claim:browser-demo-local",
-    "sandbox": "fresh browser context with every request recorded"
+    "sandbox": "fresh browser context seeded with unrelated real release, license, and draft keys; reset demo; assert those values stay byte-for-byte unchanged and every request stays same-origin"
+  },
+  {
+    "id": "offline-shell",
+    "claim": "The demo works offline after one visit, and its offline shell caches same-origin static files only",
+    "where": "landing facts, privacy page",
+    "test": "npm run build:site && npx playwright test --grep @claim:offline-shell",
+    "sandbox": "fresh browser context at ?demo=1; list every cached response, assert allowed same-origin static paths, switch the context offline, and reload the sample"
   },
   {
     "id": "rust-msrv",
@@ -138,5 +152,12 @@
     "where": "paid tier, terms page, README",
     "test": "cargo test claim_team_policy_supports_queue_history_beyond_three_submissions",
     "sandbox": "bundled sample with five completed submissions; assert the default limit warns and a Team policy of eight removes that warning"
+  },
+  {
+    "id": "license-metadata",
+    "claim": "The CLI is licensed under MIT",
+    "where": "terms page, README, package metadata",
+    "test": "node --test --test-name-pattern='@claim:license-metadata' tests/site.test.js",
+    "sandbox": "compare the LICENSE text, Cargo package license, README license section, and terms copy"
   }
 ]
