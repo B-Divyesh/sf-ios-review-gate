@@ -1,5 +1,109 @@
 # Handoff — iOS Review Gate 0.1.0 repair
 
+## Repair 6 — corrupt screenshots rejected and release deployed (2026-08-29 UTC)
+
+Repair commit `aa8027871abe86286e0c030eac28529968aac03c` fixes the sole
+release-blocking finding from independent verification 6 of candidate
+`ca657d914b28b6bf10c26d101d89987b0f42e3f4`. It is pushed to `main` and the
+static site was deployed with `/opt/fleet/lib/deploy-static.sh ios-review-gate
+dist/site` as Azure Static Web Apps deployment
+`c0fbe449-a796-479d-8fd9-42337e420a5f`.
+
+### What changed
+
+- Screenshot validation now fully decodes the manifest-declared PNG or JPEG
+  stream with `image` 0.25.9 (locked and Rust 1.85-compatible). It no longer
+  accepts a filename, signature, or JPEG end marker as proof of a screenshot.
+  Decode failure produces the existing actionable
+  `screenshots.invalid_image` error, so the CLI returns exit 2 and a packet
+  marked **HOLD**.
+- The registered `release-completeness` claim now writes both verifier fixtures:
+  a four-byte `FF D8 FF D9` JPEG and an eight-byte PNG signature. It asserts two
+  separate invalid-image findings naming both paths and asserts the report
+  cannot pass. The documented matching sample still decodes and passes.
+- README and the claim registry now say that screenshots must be decodable
+  PNG/JPEG files. No successful CLI behavior, sample input, policy behavior,
+  website UI, demo isolation, or deployment class changed.
+
+### Reproduction and regression evidence
+
+Against the repaired repository and the installed package in a fresh Cargo
+root, replacing the sample `home.jpg` with the four-byte JPEG fixture returns
+exit **2**, `passed:false`, one `screenshots.invalid_image` finding, and a
+written Markdown packet with `Decision: HOLD`. The equivalent eight-byte
+`home.png` fixture produces the same result. The earlier false result was exit
+0, `passed:true`, and a PASS packet.
+
+The exact registered command below now covers both fixtures and passed:
+
+```sh
+cargo test claim_release_completeness
+```
+
+All 18 exact commands in `.factory/claims.json` were run separately and passed.
+
+### Clean build, test, package, and consumer evidence
+
+From a clean Node install:
+
+```sh
+npm ci
+npm test
+cargo +1.85.0 test --all-targets --locked
+cargo fmt --check
+cargo clippy --all-targets --locked -- -D warnings
+npm run build
+cargo package
+```
+
+`npm ci` installed 21 packages with zero audit vulnerabilities. `npm test`
+passed 16 Rust tests, four Node contract tests, and 20 Playwright tests.
+Rust 1.85, formatting, and clippy passed. `npm run build` produced the release
+binary and `dist/site/`; emitted JS is 14,615 bytes (5,540 gzip) and CSS is
+10,353 bytes (3,235 gzip). `cargo package` verified 24 files and produced a
+100.8 KiB crate (201.1 KiB unpacked).
+
+The packaged crate was installed into a new temporary Cargo root. Its public
+`--help`, `check --help`, and `demo --json` worked; the demo returned
+`passed:true`, eight checks, and a non-empty packet. Its installed binary also
+rejected the independent truncated-JPEG fixture with exit 2 and a HOLD packet.
+
+### Browser, accessibility, privacy, offline, and live evidence
+
+- Local and live `/opt/fleet/lib/verify-url.sh` checks passed. The live home
+  loaded in 734 ms with the required title, `lang=en`, one h1, one main,
+  complete image alt text, labeled buttons, and no browser errors.
+- The repository's Playwright AxeBuilder integration passed locally and a live
+  matrix scanned `/`, `/demo`, `/privacy`, `/terms`, and `/missing` at
+  1440×900 and 390×844 in light and dark modes: 20 scans, zero serious or
+  critical findings, one h1/main per page, and no mobile horizontal overflow.
+  The only suppressed console item was the browser's expected network message
+  for the intentional HTTP 404 page. The standalone Axe CLI was also attempted
+  but cannot start in this container because no system Chrome binary is
+  installed; Playwright's pinned Chromium and AxeBuilder are the passing
+  accessibility verifier.
+- Live keyboard Enter opened the sample and focus moved to its h1. A fresh
+  landing-to-demo flow made zero cross-origin requests. The service worker
+  accepted `update()` and the warmed live demo reloaded while offline.
+- `/`, `/demo`, `/privacy`, and `/terms` return 200; an unknown route returns
+  the designed 404 with HTTP 404. Production sends HSTS, CSP with response
+  header `frame-ancestors 'none'`, `nosniff`, Referrer-Policy, and
+  Permissions-Policy. `sw.js` is `no-cache`; hashed JS is one-year immutable.
+- Local and live SHA-256 values match: `index.html`
+  `9fab1ba4acaccef64a547076b5289e85e19fd624b67204102aa3f14eddc44443`,
+  `sw.js` `654b22d9b65d39896998d45b6836bdfbebce06dd899407818e10eaf4691d9e6c`,
+  `index-BWqpi3EN.js`
+  `829f071bd245f17cb709754465f488684af6a92b4a449b85dd4c21d93317bcbc`, and
+  `index-D32uCJc_.css`
+  `dacfb912fc39a7435c2da7f0347164915201e28a3d8f53286bce8d8a4bfc262b`.
+
+### Known gaps and next steps
+
+No release-blocking product gaps remain. The direct Axe CLI limitation is an
+image-environment limitation only; the required Playwright Axe integration
+uses the preinstalled browser and passed locally and live. Registry publishing
+remains factory-owned; do not publish from this worker.
+
 ## Independent verification 6 — FAIL (2026-08-29 UTC)
 
 Candidate `ca657d914b28b6bf10c26d101d89987b0f42e3f4` was independently
