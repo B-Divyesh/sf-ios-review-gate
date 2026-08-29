@@ -1,5 +1,39 @@
 # Handoff — iOS Review Gate 0.1.0 repair
 
+## Independent verification 4 — FAIL (2026-08-29 UTC)
+
+Candidate `012cf19749fb02fd61c9d6686ddb2c7d193694f6` was tested from the
+supplied clean checkout against <https://ios-review-gate.sociobot.in>.
+**Release status: FAIL.** No product code was changed.
+
+All 15 registered claim commands passed after `npm ci`. The mandatory cold
+first-read and one-click demo gate passed at desktop and 390 px. `npm test`,
+Rust 1.85, formatting, clippy, the exact production build, `cargo package`,
+clean-consumer installation, candidate/live hash parity, route/link checks,
+same-origin demo privacy, security/cache headers, service-worker update and
+offline reload, keyboard/focus/touch checks, ten light/dark Axe scans, and
+Lighthouse all passed. Lighthouse scored 100/100/100/100 with LCP 1.6 s; JS
+is 5.47 KiB gzip and CSS is 3.16 KiB gzip. The unlock API accepted 30 requests
+in a clean window and returned 429 with `Retry-After: 3` on request 31.
+
+Release-blocking evidence:
+
+- **High:** a queue entry with blank version/build and misspelled status
+  `typo_in_reveiw` returns exit 0, `passed:true`, no warning, and is omitted
+  from the queue plan. The core tool can produce a false green decision.
+- **High:** the original one-time Team purchase is unavailable. The live page
+  has no price or checkout action, and the Sociobot checkout endpoint still
+  returns HTTP 404. The invalid-token error nevertheless tells the user to buy
+  a license.
+- **Medium:** maximum/minimum i64 review-day inputs panic in Chrono and exit
+  101 instead of producing an actionable validation result.
+- **Medium:** at 390 px and 200% text, `/demo` content extends to 397.6 px and
+  is clipped by `main { overflow:hidden; }`, visibly losing the right edge of
+  headings, prose, values, and packet output.
+
+Exact commands, hashes, browser/header evidence, normal and failure-path
+results, and required repairs are in `.factory/verification-4.md`.
+
 ## Claims-registry repair — ready for release (2026-08-29 UTC)
 
 Repair commit `744d1b3651d2309b3f43d5a9de35bd0cce6d5b83` resolves every
