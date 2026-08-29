@@ -180,6 +180,76 @@ fn claim_release_completeness_catches_seeded_metadata_privacy_and_screenshot_err
         !unknown_device_report.passed,
         "an unknown screenshot device set must never PASS"
     );
+
+    let (mut metadata, release) = sample();
+    metadata.accessed_apis[0].reasons.push("INVALID.1".into());
+    let mixed_reason_report = check(&metadata, &release, Path::new("examples/sample"));
+    assert!(
+        mixed_reason_report.findings.iter().any(|item| {
+            item.code == "privacy.reason_invalid"
+                && item.message.contains("UserDefaults")
+                && item.message.contains("INVALID.1")
+        }),
+        "every declared reason must be checked, even beside an approved reason"
+    );
+    assert!(
+        !mixed_reason_report.passed,
+        "an invalid sibling reason must never be hidden by an approved reason"
+    );
+
+    let (mut metadata, release) = sample();
+    metadata.accessed_apis[0].reasons = vec!["INVALID.1".into()];
+    let policy: TeamPolicy = serde_yaml::from_str(
+        "name: Unsafe policy\nmax_active_submissions: 8\nadditional_reason_codes:\n  UserDefaults: [INVALID.1]\n",
+    )
+    .unwrap();
+    let policy_bypass_report = check_with_policy(
+        &metadata,
+        &release,
+        Path::new("examples/sample"),
+        Some(&policy),
+    );
+    assert!(
+        policy_bypass_report.findings.iter().any(|item| {
+            item.code == "privacy.reason_invalid" && item.message.contains("INVALID.1")
+        }),
+        "a Team policy must not make a non-Apple reason valid"
+    );
+    assert!(
+        policy_bypass_report.findings.iter().any(|item| {
+            item.code == "policy.reason_invalid" && item.message.contains("INVALID.1")
+        }),
+        "the unsafe Team policy value must be named for repair"
+    );
+    assert!(
+        !policy_bypass_report.passed,
+        "a Team policy must never expand the Apple reason allowlist"
+    );
+
+    let (metadata, mut unknown_locale_release) = sample();
+    let localized = unknown_locale_release.locales.remove("en-US").unwrap();
+    unknown_locale_release
+        .locales
+        .insert("INVALID_LOCALE".into(), localized);
+    let screenshots = unknown_locale_release.screenshots.remove("en-US").unwrap();
+    unknown_locale_release
+        .screenshots
+        .insert("INVALID_LOCALE".into(), screenshots);
+    let unknown_locale_report = check(
+        &metadata,
+        &unknown_locale_release,
+        Path::new("examples/sample"),
+    );
+    assert!(
+        unknown_locale_report.findings.iter().any(|item| {
+            item.code == "locales.identifier_unknown" && item.message.contains("INVALID_LOCALE")
+        }),
+        "a nonexistent App Store locale must be rejected"
+    );
+    assert!(
+        !unknown_locale_report.passed,
+        "a release with only an unknown locale must never PASS"
+    );
 }
 
 #[test]
@@ -257,6 +327,27 @@ fn claim_queue_input_validation_rejects_incomplete_or_unknown_entries() {
             "missing {code}"
         );
     }
+
+    let (metadata, mut future_release) = sample();
+    future_release.queue.active_submissions.push(
+        serde_yaml::from_str(
+            "version: 2.3.9\nbuild: \"107\"\nstatus: in_review\nsubmitted_on: 2030-01-01",
+        )
+        .unwrap(),
+    );
+    let future_report = check(&metadata, &future_release, Path::new("examples/sample"));
+    assert!(
+        future_report.findings.iter().any(|item| {
+            item.code == "queue.submitted_after_intended"
+                && item.message.contains("2030-01-01")
+                && item.message.contains("2026-09-02")
+        }),
+        "a queue entry after the intended submission must be rejected"
+    );
+    assert!(
+        !future_report.passed,
+        "impossible queue chronology must never produce PASS"
+    );
 }
 
 #[test]
@@ -292,12 +383,11 @@ fn claim_queue_date_limits_hold_without_panicking() {
 
 #[test]
 fn claim_team_policy_supports_queue_history_beyond_three_submissions() {
-    let (mut metadata, mut release) = sample();
-    metadata.accessed_apis[0].reasons = vec!["TEAM.1".into()];
+    let (metadata, mut release) = sample();
     release.queue.active_submissions = (0..5)
         .map(|index| serde_yaml::from_str(&format!("version: 2.3.{index}\nbuild: \"{index}\"\nstatus: completed\nsubmitted_on: 2026-08-0{}", index + 1)).unwrap())
         .collect();
-    let policy: TeamPolicy = serde_yaml::from_str("name: Mobile team\nmax_active_submissions: 8\nadditional_reason_codes:\n  UserDefaults: [TEAM.1]\n").unwrap();
+    let policy: TeamPolicy = serde_yaml::from_str("name: Mobile team\nmax_active_submissions: 8\napproved_reason_codes:\n  UserDefaults: [CA92.1]\n").unwrap();
     let default_report = check(&metadata, &release, Path::new("examples/sample"));
     assert!(
         default_report

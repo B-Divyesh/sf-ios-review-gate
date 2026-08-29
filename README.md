@@ -60,16 +60,19 @@ The JSON object contains `passed`, `summary`, `findings`, `queue`, and `packet_p
 
 `release.yaml` records the intended submission. See [`examples/sample/release.yaml`](examples/sample/release.yaml) for every field. Screenshot paths are relative to that file.
 
-Rules are versioned in the binary and named in every packet. Version `apple-2026.1` covers required localized fields, accepted App Store PNG/JPEG screenshot device sets and pixel sizes, privacy manifest presence, collected-data agreement, and approved reason codes for declared API categories.
+Rules are versioned in the binary and named in every packet. Version `apple-2026.1` covers supported App Store locale identifiers, required localized fields, accepted PNG/JPEG screenshot device sets and pixel sizes, privacy manifest presence, collected-data agreement, and every declared reason code.
 
-Screenshot set keys and exact portrait or landscape sizes are in [`rules/apple-2026.1.yaml`](rules/apple-2026.1.yaml). Use a listed key such as `iphone-69`, `iphone-65`, `iphone-63`, `iphone-61`, `iphone-55`, `ipad-13`, or `ipad-11`; unknown keys and decodable files at the wrong dimensions produce a HOLD. The bundled `iphone-69` sample is 1320×2868 pixels.
+Supported locale identifiers, screenshot set keys, and exact portrait or landscape sizes are in [`rules/apple-2026.1.yaml`](rules/apple-2026.1.yaml). Use a listed locale such as `en-US` and a device key such as `iphone-69`. Unknown identifiers, unknown device keys, and decodable files at the wrong dimensions produce a HOLD. The bundled `iphone-69` sample is 1320×2868 pixels.
+
+Every reason in `accessed_apis` must appear in the Apple rules for its API category. A Team policy can narrow that list with `approved_reason_codes`; it cannot make another code Apple-approved.
 
 ## Queue input
 
 Each queued submission needs a version, build, submitted date, and one status:
 `waiting_for_review`, `in_review`, `pending_developer_release`, or `completed`.
 Unknown or incomplete queue entries produce a HOLD result. Review and buffer days
-must be zero or positive and must fit a real calendar date.
+must be zero or positive and must fit a real calendar date. Each `submitted_on`
+date must be on or before `intended_submission`.
 
 ## Develop and verify
 

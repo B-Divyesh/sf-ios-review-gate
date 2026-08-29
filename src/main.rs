@@ -32,7 +32,7 @@ enum Command {
         /// Markdown packet path
         #[arg(short, long)]
         output: Option<PathBuf>,
-        /// Optional Team policy YAML for shared reason codes and queue limits
+        /// Optional Team policy YAML for approved reason codes and queue limits
         #[arg(long)]
         policy: Option<PathBuf>,
         /// Print the result as JSON

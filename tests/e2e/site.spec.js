@@ -291,4 +291,6 @@ test('@claim:team-policy-download writes the licensed policy settings', async ({
   const content = await (await import('node:fs/promises')).readFile(await download.path(), 'utf8');
   expect(content).toContain('name: "Mobile release"');
   expect(content).toContain('max_active_submissions: 7');
+  expect(content).toContain('approved_reason_codes: {}');
+  expect(content).not.toContain('additional_reason_codes');
 });

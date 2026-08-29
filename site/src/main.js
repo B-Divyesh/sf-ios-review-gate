@@ -176,7 +176,7 @@ function downloadPolicy(event) {
   const data = new FormData(event.currentTarget);
   const name = String(data.get('name')).replace(/[\r\n]/g, ' ').trim();
   const limit = Math.max(3, Math.min(99, Number(data.get('limit')) || 3));
-  const yaml = `name: ${JSON.stringify(name)}\nmax_active_submissions: ${limit}\nadditional_reason_codes: {}\n`;
+  const yaml = `name: ${JSON.stringify(name)}\nmax_active_submissions: ${limit}\napproved_reason_codes: {}\n`;
   const url = URL.createObjectURL(new Blob([yaml], { type: 'text/yaml' }));
   const link = document.createElement('a'); link.href = url; link.download = 'team-policy.yaml'; link.click();
   URL.revokeObjectURL(url);

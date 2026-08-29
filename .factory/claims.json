@@ -11,7 +11,7 @@
     "claim": "Checks localized metadata, accepted App Store screenshot device sets and pixel sizes, privacy declarations, and reason codes",
     "where": "landing, README",
     "test": "cargo test claim_release_completeness",
-    "sandbox": "bundled sample with seeded metadata/privacy inconsistencies, truncated JPEG/PNG stubs, a decodable 1×1 JPEG, and an unknown device-set key"
+    "sandbox": "bundled sample with seeded metadata/privacy inconsistencies, invalid sibling and Team-added reason codes, an unknown App Store locale, truncated JPEG/PNG stubs, a decodable 1×1 JPEG, and an unknown device-set key"
   },
   {
     "id": "markdown-packet",
@@ -60,7 +60,7 @@
     "claim": "Rejects incomplete or unknown queue entries before it can pass",
     "where": "README queue input",
     "test": "cargo test claim_queue_input_validation_rejects_incomplete_or_unknown_entries",
-    "sandbox": "bundled sample with blank version/build and an unknown status; assert HOLD findings and conservative queue count"
+    "sandbox": "bundled sample with blank version/build, an unknown status, and an active submission dated after the intended release; assert HOLD findings and conservative queue count"
   },
   {
     "id": "queue-date-limits",

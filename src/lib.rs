@@ -2,7 +2,7 @@ use chrono::{Days, NaiveDate, Utc};
 use image::{GenericImageView, ImageFormat};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs,
     path::{Path, PathBuf},
 };
@@ -13,6 +13,7 @@ pub const RULESET: &str = "apple-2026.1";
 struct RuleSet {
     id: String,
     localized_field_limits: BTreeMap<String, usize>,
+    supported_locales: Vec<String>,
     screenshots_per_set: ScreenshotLimits,
     screenshot_device_sets: BTreeMap<String, ScreenshotDeviceSet>,
     required_reason_apis: BTreeMap<String, Vec<String>>,
@@ -112,7 +113,13 @@ pub struct TeamPolicy {
     pub name: String,
     #[serde(default = "default_history_limit")]
     pub max_active_submissions: usize,
-    #[serde(default)]
+    // The old key is accepted so existing policy files still load, but these
+    // codes now narrow the immutable Apple rules instead of expanding them.
+    #[serde(
+        default,
+        rename = "approved_reason_codes",
+        alias = "additional_reason_codes"
+    )]
     pub additional_reason_codes: BTreeMap<String, Vec<String>>,
 }
 
@@ -402,25 +409,16 @@ pub fn check_with_policy(
         ));
     }
 
-    let mut approved = rules.required_reason_apis;
-    if let Some(policy) = policy {
-        for (category, reasons) in &policy.additional_reason_codes {
-            approved
-                .entry(category.clone())
-                .or_default()
-                .extend(reasons.iter().cloned());
-        }
-    }
+    let approved = &rules.required_reason_apis;
     for api in &metadata.accessed_apis {
         match approved.get(api.category.as_str()) {
             None => findings.push(finding(
                 "privacy.api_unknown",
-                Severity::Warning,
+                Severity::Error,
                 format!("{} is not covered by ruleset {}.", api.category, RULESET),
-                "Review Apple's current required-reason API list.",
+                "Use a required-reason API category from the bundled rules, or update the ruleset before release.",
             )),
-            Some(valid) if !api.reasons.iter().any(|reason| valid.contains(reason)) => findings
-                .push(finding(
+            Some(valid) if api.reasons.is_empty() => findings.push(finding(
                     "privacy.reason_missing",
                     Severity::Error,
                     format!(
@@ -429,7 +427,99 @@ pub fn check_with_policy(
                     ),
                     format!("Add an approved reason: {}.", valid.join(", ")),
                 )),
-            _ => {}
+            Some(valid) => {
+                for reason in &api.reasons {
+                    if !valid.contains(reason) {
+                        findings.push(finding(
+                            "privacy.reason_invalid",
+                            Severity::Error,
+                            format!(
+                                "{} declares reason {}, which is not allowed by {}.",
+                                api.category, reason, RULESET
+                            ),
+                            format!(
+                                "Remove {} or replace it with an approved reason: {}.",
+                                reason,
+                                valid.join(", ")
+                            ),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    if let Some(policy) = policy {
+        for (category, team_approved) in &policy.additional_reason_codes {
+            match approved.get(category) {
+                None => findings.push(finding(
+                    "policy.reason_api_unknown",
+                    Severity::Error,
+                    format!(
+                        "Team policy {} lists unknown API category {}.",
+                        policy.name, category
+                    ),
+                    "Remove the category or use one from the bundled Apple rules.",
+                )),
+                Some(apple_approved) => {
+                    for reason in team_approved {
+                        if !apple_approved.contains(reason) {
+                            findings.push(finding(
+                                "policy.reason_invalid",
+                                Severity::Error,
+                                format!(
+                                    "Team policy {} lists {} for {}, but {} does not allow it.",
+                                    policy.name, reason, category, RULESET
+                                ),
+                                format!(
+                                    "Remove {} or choose from: {}.",
+                                    reason,
+                                    apple_approved.join(", ")
+                                ),
+                            ));
+                        }
+                    }
+                    for api in metadata
+                        .accessed_apis
+                        .iter()
+                        .filter(|api| api.category == *category)
+                    {
+                        for reason in api
+                            .reasons
+                            .iter()
+                            .filter(|reason| apple_approved.contains(reason))
+                        {
+                            if !team_approved.contains(reason) {
+                                findings.push(finding(
+                                    "privacy.reason_not_team_approved",
+                                    Severity::Error,
+                                    format!(
+                                        "{} is Apple-approved for {}, but Team policy {} does not approve it.",
+                                        reason, category, policy.name
+                                    ),
+                                    format!(
+                                        "Use a Team-approved reason for {} or add this Apple-approved reason to the policy.",
+                                        category
+                                    ),
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let mut locale_identifiers = BTreeSet::new();
+    locale_identifiers.extend(release.locales.keys());
+    locale_identifiers.extend(release.screenshots.keys());
+    for locale in locale_identifiers {
+        if !rules.supported_locales.contains(locale) {
+            findings.push(finding(
+                "locales.identifier_unknown",
+                Severity::Error,
+                format!("{} is not an App Store locale in {}.", locale, RULESET),
+                "Use a locale identifier from the bundled rules, such as en-US, fr-FR, ja, or zh-Hans.",
+            ));
         }
     }
 
@@ -641,6 +731,17 @@ pub fn check_with_policy(
                     QUEUE_STATUSES.join(", ")
                 ),
                 "Set status to the current App Store review state.",
+            ));
+        }
+        if item.submitted_on > release.intended_submission {
+            findings.push(finding(
+                "queue.submitted_after_intended",
+                Severity::Error,
+                format!(
+                    "Queue entry {entry} was submitted on {}, after the intended submission on {}.",
+                    item.submitted_on, release.intended_submission
+                ),
+                "Correct submitted_on or move intended_submission after this queued submission.",
             ));
         }
     }
