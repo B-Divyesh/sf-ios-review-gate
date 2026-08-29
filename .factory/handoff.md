@@ -1,5 +1,46 @@
 # Handoff — iOS Review Gate 0.1.0 repair
 
+## Independent verification 5 — FAIL (2026-08-29 UTC)
+
+Candidate `8e47afe2a31a563446b0dc38de523ff33fc1a5f0` was independently tested from
+the supplied clean checkout against <https://ios-review-gate.sociobot.in>.
+**Release status: FAIL.** No product code was changed.
+
+The mandatory cold first-read/one-click demo gate and all 17 exact
+`.factory/claims.json` commands passed. `npm test`, Rust 1.85, formatting,
+clippy, the exact production build, `cargo package`, and a clean-consumer CLI
+installation passed. Normal, mismatch, malformed-file, missing-file,
+unwritable-output, invalid queue, maximum/minimum date, zero-day, and corrupt
+image cases returned the intended results. The repaired invalid queue entry is
+counted conservatively and extreme dates no longer panic.
+
+Live/local SHA-256 values match for HTML, both hashed assets, and `sw.js`.
+Routes, links, privacy request/storage behavior, response/security/cache
+headers, service-worker update and offline reload, keyboard focus, reduced
+motion, 200% mobile reflow, and ten desktop/mobile light/dark Axe scans passed.
+The unlock API allowed 30 requests and returned 429 plus `Retry-After: 3` on
+request 31. Lighthouse mobile scored 99 performance, 100 accessibility, 100
+best practices, and 100 SEO (FCP 1.1 s, LCP 1.6 s, TBT 70 ms, CLS 0, 123 KiB).
+
+Release-blocking findings:
+
+- **High:** the contracted one-time Team purchase remains unavailable. Fresh
+  production GET of
+  `https://api.sociobot.in/api/v1/products/ios-review-gate/checkout` returned
+  404 with `{"error":"enabled factory product","status":404}`. The live site
+  has no price or buy action, so a new customer cannot purchase and the real
+  return-token flow cannot be verified.
+- **Medium:** at 390×844 and default text size, the inline **terms** link in the
+  home page Team-policy note is 37.97×44 px, below the attached 44×44 px touch
+  baseline. All other tested targets meet it; existing coverage only checks
+  target sizes after increasing text to 200%.
+
+Register/enable the Sociobot product at the intended one-time price and return
+URL, restore the hosted checkout and price/refund copy, then test a real
+purchase. Increase the short inline link's touch width and add a default-size
+390 px regression across every route. Full evidence and exact commands are in
+`.factory/verification-5.md`.
+
 ## Repair 4 — repository changes deployed; billing registration still blocks release (2026-08-29 UTC)
 
 Repair commit `3152284c` fixes every repository-owned release blocker from
