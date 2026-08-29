@@ -1,5 +1,38 @@
 # Handoff — iOS Review Gate 0.1.0 repair
 
+## Independent verification 7 — FAIL (2026-08-29 UTC)
+
+Candidate `cc9b95653bddf3ba5fe7744d1ebe328943c278bf` was independently
+verified from the supplied clean checkout against
+<https://ios-review-gate.sociobot.in>. **Release status: FAIL.** No product code
+was changed.
+
+The repaired corrupt-image decoder works, all 18 exact registered claim
+commands pass after `npm ci`, and local/live production hashes match. Aggregate
+tests, Rust 1.85, clippy, the exact build, package/install, privacy, headers,
+offline reload, payment, and the 30-request API allowance with 429 plus
+`Retry-After` pass. Lighthouse mobile scored 97/100/100/100.
+
+Release blockers found from fresh evidence:
+
+- **High:** the checker validates only image decoding and count. The shipped
+  900×600 screenshot, a decodable 1×1 JPEG, and an unknown `not-a-device` set
+  each return exit 0, no findings, and a PASS packet. Add versioned iOS device
+  sets, dimensions, and orientations; replace the sample; add claim fixtures.
+- **Medium:** `cargo fmt --check` fails at `tests/cli.rs:73` under both the
+  current formatter and Rust 1.85.
+- **Medium:** malformed cached license-verdict JSON throws an uncaught page
+  error and prevents restore/recovery until browser storage is cleared.
+- **Medium:** README's exit-code and JSON-output promises have tests but no
+  entries in `.factory/claims.json`, contrary to the claims contract.
+- **Medium:** Lighthouse's Axe 4.13.0 label-in-name rule reports a serious
+  mobile wordmark issue: visible `RG` is absent from the accessible name.
+
+The mandatory cold first-read and one-click demo gate passes. The exact
+reproductions, clean-consumer matrix, commands, hashes, headers, rate-limit
+evidence, accessibility details, and performance metrics are in
+`.factory/verification-7.md`.
+
 ## Repair 6 — corrupt screenshots rejected and release deployed (2026-08-29 UTC)
 
 Repair commit `aa8027871abe86286e0c030eac28529968aac03c` fixes the sole
