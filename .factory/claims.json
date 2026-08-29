@@ -108,21 +108,21 @@
     "id": "one-click-demo",
     "claim": "The site opens a complete sample release in one click",
     "where": "landing primary action",
-    "test": "npm run build:site && npx playwright test --grep @claim:one-click-demo",
+    "test": "npm run verify:browser-claim -- --grep @claim:one-click-demo",
     "sandbox": "fresh browser context at the home page"
   },
   {
     "id": "browser-demo-local",
     "claim": "The browser demo saves no personal release data and sends no cross-origin requests",
     "where": "demo banner and privacy page",
-    "test": "npm run build:site && npx playwright test --grep @claim:browser-demo-local",
+    "test": "npm run verify:browser-claim -- --grep @claim:browser-demo-local",
     "sandbox": "fresh browser context seeded with unrelated real release, license, and draft keys; reset demo; assert those values stay byte-for-byte unchanged and every request stays same-origin"
   },
   {
     "id": "offline-shell",
     "claim": "The demo works offline after one visit, and its offline shell caches same-origin static files only",
     "where": "landing facts, privacy page",
-    "test": "npm run build:site && npx playwright test --grep @claim:offline-shell",
+    "test": "npm run verify:browser-claim -- --grep @claim:offline-shell",
     "sandbox": "fresh browser context at ?demo=1; list every cached response, assert allowed same-origin static paths, switch the context offline, and reload the sample"
   },
   {
@@ -136,21 +136,21 @@
     "id": "license-restore",
     "claim": "A buyer can paste, verify, and store a Team license",
     "where": "paid tier and privacy page",
-    "test": "npm run build:site && npx playwright test --grep @claim:license-restore",
+    "test": "npm run verify:browser-claim -- --grep @claim:license-restore",
     "sandbox": "fresh browser context with a recorded valid Sociobot verification response"
   },
   {
     "id": "team-purchase",
     "claim": "A $39 one-time Team purchase starts at the hosted Sociobot checkout",
     "where": "paid tier, terms page, README",
-    "test": "npm run build:site && npx playwright test --grep @claim:team-purchase",
+    "test": "npm run verify:browser-claim -- --grep @claim:team-purchase",
     "sandbox": "fresh browser context with the checkout navigation intercepted; assert the exact price and production Sociobot URL"
   },
   {
     "id": "team-policy-download",
     "claim": "A verified Team license enables a local policy download with the chosen queue limit and Apple reason codes",
     "where": "paid tier, terms page",
-    "test": "npm run build:site && npx playwright test --grep @claim:team-policy-download",
+    "test": "npm run verify:browser-claim -- --grep @claim:team-policy-download",
     "sandbox": "fresh browser context with a cached recorded license verdict; choose queue and reason settings, inspect the YAML, then pass it to the real CLI"
   },
   {
@@ -171,7 +171,7 @@
     "id": "version-metadata",
     "claim": "The site footer identifies the CLI version and deployed source build",
     "where": "footer on every route, including 404",
-    "test": "npm run build && npx playwright test --grep @claim:version-metadata",
+    "test": "npm run verify:browser-claim -- --grep @claim:version-metadata",
     "sandbox": "compare Cargo and package versions with CLI --version, then compare the generated Git build id on the SPA and standalone 404"
   }
 ]

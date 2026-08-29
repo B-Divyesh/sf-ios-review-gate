@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 
+const escapeRegex = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const routeMatches = (route, path) => new RegExp(`^${route.split('*').map(escapeRegex).join('.*')}$`).test(path);
+
 test('site metadata and landmarks are declared', async () => {
   const html = await readFile('index.html', 'utf8');
   assert.match(html, /<html lang="en">/);
@@ -33,6 +36,47 @@ test('factory contracts and static host configuration are valid JSON', async () 
   ]);
   assert.deepEqual(host.responseOverrides['404'], { rewrite: '/404.html', statusCode: 404 });
   await stat('404.html');
+});
+
+test('browser claim commands install their locked tooling before using it', async () => {
+  const claims = JSON.parse(await readFile('.factory/claims.json', 'utf8'));
+  const packageJson = JSON.parse(await readFile('package.json', 'utf8'));
+  const browserClaims = claims.filter(claim => claim.test.startsWith('npm run verify:browser-claim'));
+
+  assert.equal(packageJson.scripts['verify:browser-claim'], 'npm ci && npm run build:site && npx playwright test');
+  assert.deepEqual(browserClaims.map(claim => claim.id), [
+    'one-click-demo',
+    'browser-demo-local',
+    'offline-shell',
+    'license-restore',
+    'team-purchase',
+    'team-policy-download',
+    'version-metadata',
+  ]);
+  for (const claim of browserClaims) {
+    assert.equal(
+      claim.test,
+      `npm run verify:browser-claim -- --grep @claim:${claim.id}`,
+      `${claim.id} must run from a clean clone before local Vite or Playwright binaries are available`,
+    );
+  }
+});
+
+test('hashed Vite entry assets receive immutable caching while stable public files do not', async () => {
+  const host = JSON.parse(await readFile('site/public/staticwebapp.config.json', 'utf8'));
+  const vite = await readFile('vite.config.js', 'utf8');
+  const immutable = host.routes.find(route => route.headers?.['Cache-Control'] === 'public, max-age=31536000, immutable');
+
+  assert.ok(immutable, 'the static host needs an immutable hashed-asset route');
+  assert.equal(immutable.route, '/assets/main-*');
+  assert.match(vite, /entryFileNames: 'assets\/main-\[hash\]\.js'/);
+  assert.match(vite, /chunkFileNames: 'assets\/main-\[hash\]\.js'/);
+  assert.match(vite, /assetFileNames: 'assets\/main-\[hash\]\[extname\]'/);
+  for (const emittedHashedAsset of ['/assets/main-a1b2c3d4.js', '/assets/main-a1b2c3d4.css']) {
+    assert.equal(routeMatches(immutable.route, emittedHashedAsset), true, `${emittedHashedAsset} must match immutable caching`);
+  }
+  assert.equal(routeMatches(immutable.route, '/assets/release-blueprint.webp'), false, 'stable public artwork must remain revalidatable');
+  assert.equal(routeMatches(immutable.route, '/sw.js'), false, 'the service worker must retain its no-cache policy');
 });
 
 test('every repaired visitor promise is registered to an exact claim test', async () => {

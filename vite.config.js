@@ -28,6 +28,14 @@ export default defineConfig({
         index: resolve('index.html'),
         404: resolve('404.html'),
       },
+      output: {
+        // Keep every Vite-generated, content-addressed asset beneath the same
+        // cache route. Files copied from public/ deliberately keep their
+        // stable names and remain revalidatable.
+        entryFileNames: 'assets/main-[hash].js',
+        chunkFileNames: 'assets/main-[hash].js',
+        assetFileNames: 'assets/main-[hash][extname]',
+      },
     },
   },
 });
