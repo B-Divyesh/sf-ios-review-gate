@@ -60,21 +60,29 @@ scope changed.
   `Cache-Control: public, max-age=31536000, immutable`; `/sw.js` returned
   exactly `Cache-Control: no-cache`.
 - Before the cache-version repair deployment, a persisted live browser profile
-  held exactly `ios-review-gate-v7`; the post-deploy check uses that same
-  profile to prove migration to the build-versioned cache.
+  held exactly `ios-review-gate-v7`. After deployment it held only
+  `ios-review-gate-c483f078337c`, showed footer build `c483f078337c`, and
+  reloaded `/?demo=1` offline with its sample heading intact.
 
-## Deploy and post-deploy check
+## Deployment evidence
 
-Deploy the generated static site with the work-order configuration:
-
-```sh
-/opt/fleet/lib/deploy-static.sh ios-review-gate dist/site
-```
-
-After deploy, verify `https://ios-review-gate.sociobot.in` with
-`/opt/fleet/lib/verify-url.sh`, confirm `/assets/main-*.js` and
-`/assets/main-*.css` have the immutable policy above, confirm `/sw.js` is
-`no-cache`, and check the footer build ID is the deployed commit.
+- `/opt/fleet/lib/deploy-static.sh ios-review-gate dist/site`: PASS — Azure
+  deployment `ea86fe14-54ae-4e95-9e5e-c649e99b63a3` succeeded and HTTPS was
+  available at `https://ios-review-gate.sociobot.in`.
+- Live byte identity: `index.html`, `404.html`, `sw.js`,
+  `assets/main--FRvwSeA.js`, and `assets/main-FbCzFwnk.css` exactly matched
+  the generated `dist/site/` files for build `c483f078337c`.
+- Live response policy: both emitted JS and CSS returned exactly
+  `Cache-Control: public, max-age=31536000, immutable`; `sw.js` returned
+  exactly `Cache-Control: no-cache`.
+- `/opt/fleet/lib/verify-url.sh https://ios-review-gate.sociobot.in`: PASS —
+  981 ms load, no browser/page errors, title, `lang=en`, one h1, main,
+  complete image alt text, and labeled buttons.
+- Live Playwright/Axe smoke: desktop `/`, demo, privacy, terms, and 404 plus
+  390 px home and demo had one h1/main, no horizontal overflow, and zero
+  serious or critical Axe violations. Keyboard Enter opened the sample and
+  focused its h1 at both widths. The expected main-document 404 network line
+  was the only exempt console entry.
 
 ## Known gaps
 
