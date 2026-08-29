@@ -26,7 +26,11 @@ test('factory contracts and static host configuration are valid JSON', async () 
   const host = JSON.parse(await readFile('site/public/staticwebapp.config.json', 'utf8'));
   assert.ok(claims.length >= 1);
   assert.equal(new Set(claims.map(claim => claim.id)).size, claims.length);
-  assert.equal(host.navigationFallback.rewrite, '/index.html');
+  assert.deepEqual(host.routes.slice(0, 3), [
+    { route: '/demo', rewrite: '/index.html' },
+    { route: '/privacy', rewrite: '/index.html' },
+    { route: '/terms', rewrite: '/index.html' },
+  ]);
   assert.deepEqual(host.responseOverrides['404'], { rewrite: '/404.html', statusCode: 404 });
   await stat('site/public/404.html');
 });

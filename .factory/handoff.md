@@ -18,9 +18,10 @@ This repair addresses every repository-owned finding in independent verification
   checks localStorage, sessionStorage, cookies, IndexedDB, Cache Storage, and
   requests. `.factory/demo.md` documents the `ios-review-gate-v3` static
   offline-shell cache.
-- Static Web Apps now has a `404` response override to the product-specific
-  `404.html`, with HTTP status 404 at deployment. The SPA recovery view remains
-  available during local Vite development.
+- Static Web Apps now has explicit rewrites for the three real SPA routes and
+  a `404` response override to the product-specific `404.html`, with HTTP
+  status 404 at deployment. The SPA recovery view remains available during
+  local Vite development.
 - At 390 px, links and controls now have 44 px minimum targets. The compact
   header wraps at enlarged text sizes, preventing the previous 200% text
   overflow.
